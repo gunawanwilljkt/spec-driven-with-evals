@@ -1,0 +1,283 @@
+#!/usr/bin/env python3
+"""sde — a READ-ONLY deriver for the SDE state machine.
+
+This is NOT a state mutator and NOT an orchestrator. It computes the ladder defined in
+.sde/RESUME.md *from disk* and prints it. Every value is DERIVED from primitives; it stores
+nothing (no manifest, no cached next_action). That is the whole point of PRIMITIVE-vs-DERIVED:
+two fresh readers of the same disk get the same answer, so there is no source of truth to corrupt.
+
+stdlib only. Python 3.8+.
+
+Usage:
+  sde status [--root DIR]    full derived state: per-slice phase + coverage + trust, then next action
+  sde next   [--root DIR]    just the single objective-level next action (one line)
+  sde trust  SLICE [--root]  per-eval trust derivation for one slice (debug the rung-2 gate)
+
+Exit code: 0 if the objective is complete, 2 if there is a next action, 1 on a structural error.
+"""
+import argparse, hashlib, json, os, re, sys
+
+# ---------- primitive readers (pure; skip-malformed where append-only) ----------
+
+def _root(start):
+    d = os.path.abspath(start)
+    while True:
+        if os.path.isdir(os.path.join(d, ".sde")):
+            return os.path.join(d, ".sde")
+        p = os.path.dirname(d)
+        if p == d:
+            sys.stderr.write("sde: no .sde/ directory found from %s upward\n" % start)
+            sys.exit(1)
+        d = p
+
+def _read(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return None
+
+def _sha(path):
+    data = _read(path)
+    return None if data is None else "sha256:" + hashlib.sha256(data.encode()).hexdigest()[:12]
+
+def _jsonl(path):
+    """Append-only log reader: yield parsed objects, skip any malformed/comment line."""
+    text = _read(path) or ""
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            yield json.loads(line)
+        except json.JSONDecodeError:
+            continue  # torn final write or comment → ignore, never fatal
+
+# ---------- spec parsing ----------
+
+INTENT_RE = re.compile(r"^(I\d+)\.\s+(.*)$")
+BIND_RE = re.compile(r"^\s*eval:\s+(\w+)\s+(\S+)\s+gate=(\w+)(?:\s+mutant=(\S+))?")
+
+def parse_spec(slice_dir):
+    """Return list of intents: {id, evals:[{id,tier,file,gate,mutant}]}. eval id = '<intent>.<tier>'."""
+    text = _read(os.path.join(slice_dir, "spec.md"))
+    if text is None:
+        return None
+    intents, cur = [], None
+    for line in text.splitlines():
+        m = INTENT_RE.match(line)
+        if m:
+            cur = {"id": m.group(1), "text": m.group(2), "evals": []}
+            intents.append(cur)
+            continue
+        b = BIND_RE.match(line)
+        if b and cur is not None:
+            tier, f, gate, mutant = b.group(1), b.group(2), b.group(3), b.group(4)
+            cur["evals"].append({"id": "%s.%s" % (cur["id"], tier), "tier": tier,
+                                  "file": f, "gate": gate, "mutant": mutant})
+    return intents
+
+def parse_tasks(slice_dir):
+    text = _read(os.path.join(slice_dir, "tasks.md")) or ""
+    tasks = []
+    for line in text.splitlines():
+        if not line.strip().startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 5 or cells[0] in ("id", "----") or set(cells[0]) <= set("-"):
+            continue
+        tasks.append({"id": cells[0], "targets": cells[1], "deps": cells[2],
+                      "status": cells[3], "owner": cells[4]})
+    return tasks
+
+# ---------- derivations (the ladder) ----------
+
+def spec_fingerprint(slice_dir):
+    """Fingerprint of the INTENT content of spec.md (derived blocks stripped). Stable across the
+    freeze (freeze just copies the file), so trust established at rung 2 survives the rung-3 freeze.
+    Changes only when an intent statement actually changes → trust/runs correctly go stale."""
+    body = _strip_derived(_read(os.path.join(slice_dir, "spec.md"))) or ""
+    return "sha256:" + hashlib.sha256(body.encode()).hexdigest()[:12]
+
+def derive_trust(root, slice_dir, intents):
+    """For each required eval, derive trust ∈ {trusted, stale, untrusted} from trust.log + hashes.
+    Eval file paths in spec.md are resolved relative to the PROJECT ROOT (parent of .sde/), so eval
+    code lives in the repo's normal structure (evals/, tests/), not buried in the state dir."""
+    project_root = os.path.dirname(root)
+    fp = spec_fingerprint(slice_dir)
+    events = list(_jsonl(os.path.join(slice_dir, "trust.log")))
+    out = {}
+    for it in intents:
+        for ev in it["evals"]:
+            if ev["gate"] != "required":
+                continue
+            cur_hash = _sha(os.path.join(project_root, ev["file"]))
+            killed = passed = stale = False
+            for e in events:                      # latest events win; scan in order
+                if e.get("eval") != ev["id"]:
+                    continue
+                at_cur = (e.get("eval_hash") == cur_hash and e.get("spec_fp") == fp)
+                if e.get("result") == "killed":
+                    killed = at_cur
+                    stale = stale or not at_cur
+                elif e.get("result") == "passed":
+                    passed = at_cur
+                    stale = stale or not at_cur
+            if killed and passed:
+                state = "trusted"
+            elif (killed or passed or stale):
+                state = "stale"
+            else:
+                state = "untrusted"
+            out[ev["id"]] = state
+    return out
+
+def derive_runs(root, slice_id, slice_dir, intents):
+    """Latest runs.log verdict per required eval at the current spec fingerprint."""
+    fp = spec_fingerprint(slice_dir)
+    verdict = {}
+    for e in _jsonl(os.path.join(root, "runs.log")):
+        if e.get("slice") != slice_id:
+            continue
+        if e.get("spec_fp") != fp:
+            continue
+        verdict[e.get("eval")] = e.get("verdict")
+    required = [ev["id"] for it in intents for ev in it["evals"] if ev["gate"] == "required"]
+    return {eid: verdict.get(eid) for eid in required}
+
+def slice_phase(root, slice_id, slice_dir):
+    """Return (phase, action, detail) — the first unsatisfied rung. Pure function of disk."""
+    intents = parse_spec(slice_dir)
+    if not intents:
+        return ("spec", "author spec.md intents", "no intents found")
+
+    # rung 1 — bind
+    unbound = [it["id"] for it in intents if not it["evals"]]
+    if unbound:
+        return ("bind", "bind an eval to %s" % ", ".join(unbound), "%d unbound" % len(unbound))
+
+    # rung 2 — trust
+    trust = derive_trust(root, slice_dir, intents)
+    not_trusted = [eid for eid, st in trust.items() if st != "trusted"]
+    if not_trusted:
+        return ("trust", "establish trust for %s" % ", ".join(not_trusted),
+                "; ".join("%s=%s" % (e, trust[e]) for e in not_trusted))
+
+    # rung 3 — freeze (and the blocked special-case)
+    spec_txt = _read(os.path.join(slice_dir, "spec.md"))
+    lock_txt = _read(os.path.join(slice_dir, "spec.lock.md"))
+    if lock_txt is None:
+        return ("freeze", "freeze: cp spec.md spec.lock.md", "not yet frozen")
+    if _strip_derived(spec_txt) != _strip_derived(lock_txt):
+        return ("blocked", "spec drifted after freeze → deliberate re-freeze + re-derive trust",
+                "spec.md != spec.lock.md")
+
+    # rung 4 — execute
+    tasks = parse_tasks(slice_dir)
+    done_ids = {t["id"] for t in tasks if t["status"] == "done"}
+    ready = [t for t in tasks if t["status"] != "done"
+             and all(d.strip() in done_ids for d in t["deps"].split(",") if d.strip() and d.strip() != "-")]
+    if ready:
+        t = ready[0]
+        return ("execute", "run task %s (targets %s)" % (t["id"], t["targets"]),
+                "%d task(s) remain" % len([t for t in tasks if t["status"] != "done"]))
+
+    # rung 5 — evalrun
+    runs = derive_runs(root, slice_id, slice_dir, intents)
+    failing = [eid for eid, v in runs.items() if v != "PASS"]
+    if failing:
+        return ("evalrun", "run eval suite; resolve %s" % ", ".join(failing),
+                "; ".join("%s=%s" % (e, runs[e] or "no-run") for e in failing))
+
+    return ("done", "slice complete", "all required evals PASS at frozen spec")
+
+def _strip_derived(text):
+    """Drift compares spec INTENT, ignoring the DERIVED Coverage/Intent-audit blocks."""
+    if text is None:
+        return None
+    out, skip = [], False
+    for line in text.splitlines():
+        if re.match(r"^##\s+(Coverage|Intent-audit)", line):
+            skip = True
+            continue
+        if skip and line.startswith("## "):
+            skip = False
+        if not skip:
+            out.append(line.rstrip())
+    return "\n".join(out).strip()
+
+# ---------- objective-level ----------
+
+def slices(root):
+    sdir = os.path.join(root, "slices")
+    if not os.path.isdir(sdir):
+        return []
+    # only real slice DIRECTORIES; skip dotfiles (.DS_Store, .blocked markers, editor cruft)
+    return sorted(d for d in os.listdir(sdir)
+                  if not d.startswith(".") and os.path.isdir(os.path.join(sdir, d)))
+
+def next_action(root):
+    for sid in slices(root):
+        phase, action, detail = slice_phase(root, sid, os.path.join(root, "slices", sid))
+        if phase not in ("done",):
+            return (sid, phase, action, detail)
+    return (None, "done", "objective complete — verify .sde/objective.md 'done when'", "")
+
+# ---------- commands ----------
+
+def cmd_status(root):
+    print("OBJECTIVE: " + (_first(_read(os.path.join(root, "objective.md")) or "", r"^#\s*Objective:\s*(.+)$") or "<unset>"))
+    for sid in slices(root):
+        sd = os.path.join(root, "slices", sid)
+        phase, action, detail = slice_phase(root, sid, sd)
+        intents = parse_spec(sd) or []
+        covered = sum(1 for it in intents if it["evals"])
+        trust = derive_trust(root, sd, intents)
+        tcount = sum(1 for v in trust.values() if v == "trusted")
+        print("  %-22s phase=%-8s coverage=%d/%d trust=%d/%d  %s"
+              % (sid, phase, covered, len(intents), tcount, len(trust), ("· " + detail) if detail else ""))
+    sid, phase, action, detail = next_action(root)
+    print("\nNEXT: " + (("[%s] " % sid) if sid else "") + action)
+    return 0 if phase == "done" and sid is None else 2
+
+def cmd_next(root, porcelain=False):
+    sid, phase, action, detail = next_action(root)
+    if porcelain:                              # machine-readable for the factory driver
+        print("\t".join([sid or "-", phase, action]))
+    else:
+        print((("[%s] " % sid) if sid else "") + action)
+    return 0 if phase == "done" and sid is None else 2
+
+def cmd_trust(root, sid):
+    sd = os.path.join(root, "slices", sid)
+    intents = parse_spec(sd) or []
+    trust = derive_trust(root, sd, intents)
+    if not trust:
+        print("(no required evals)"); return 0
+    for eid, st in trust.items():
+        print("%-18s %s" % (eid, st))
+    return 0 if all(v == "trusted" for v in trust.values()) else 2
+
+def _first(text, pat):
+    m = re.search(pat, text, re.MULTILINE)
+    return m.group(1).strip() if m else None
+
+def main(argv):
+    ap = argparse.ArgumentParser(prog="sde", add_help=True)
+    ap.add_argument("command", choices=["status", "next", "trust"])
+    ap.add_argument("slice", nargs="?")
+    ap.add_argument("--root", default=".")
+    ap.add_argument("--porcelain", action="store_true", help="tab-separated slice/phase/action (for `next`)")
+    a = ap.parse_args(argv)
+    root = _root(a.root)
+    if a.command == "status":
+        return cmd_status(root)
+    if a.command == "next":
+        return cmd_next(root, a.porcelain)
+    if a.command == "trust":
+        if not a.slice:
+            ap.error("trust requires a SLICE id")
+        return cmd_trust(root, a.slice)
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

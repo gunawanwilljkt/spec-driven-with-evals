@@ -1,0 +1,11 @@
+{
+  "judge_eval": "pagination.semantic.no_user_visible_dupe",
+  "model": "<would-be: a different model than the builder; NOT CALLED — no ANTHROPIC_API_KEY in this sandbox>",
+  "rubric": [
+    "Does the returned stream ever show the same item id twice to the user?",
+    "Could a user paging the list miss an item that existed the whole time?"
+  ],
+  "input_artifact": "stream from eval_contract.py mutant run: [1,2,3,3,4,5,6]",
+  "verdict": "FAIL",
+  "rationale": "id 3 appears twice; a user scrolling the feed would see a duplicate row. Violates intent I2."
+}

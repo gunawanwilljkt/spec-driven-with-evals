@@ -1,0 +1,5 @@
+# Append-only eval-run verdicts — one JSON object per line. Readers SKIP malformed lines.
+# Schema (this comment line is intentionally not JSON, so parsers skip it):
+# {"ts":"<iso8601>","slice":"<id>","eval":"<eval-id>","verdict":"PASS|FAIL|FLAG","gate":"required|flag|advisory","spec_fp":"<fingerprint of spec.md intents>","evidence":"<path>","by":"<agent-id>"}
+# spec_fp = sha256 of spec.md with derived blocks stripped (what `sde` computes). A verdict only
+# counts toward rung-5 if its spec_fp matches the current spec — so changing an intent re-opens the gate.

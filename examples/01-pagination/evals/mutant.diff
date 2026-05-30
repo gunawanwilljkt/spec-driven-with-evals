@@ -1,0 +1,33 @@
+--- src/paginate.py
++++ src/paginate.py
+@@ -26,21 +26,14 @@
+ 
+ 
+ def page(conn, limit, cursor=None):
+-    """Stable keyset pagination. cursor is None for page 1, else the (created_at, id) of the last
+-    row of the previous page. Continuation is 'strictly after the cursor', so an insert BEFORE the
+-    cursor cannot shift the window. Returns (ids, next_cursor)."""
+-    if cursor is None:
+-        rows = conn.execute(
+-            "SELECT id, created_at FROM items ORDER BY created_at, id LIMIT ?",
+-            (limit,),
+-        ).fetchall()
+-    else:
+-        last_ts, last_id = cursor
+-        rows = conn.execute(
+-            "SELECT id, created_at FROM items WHERE (created_at, id) > (?, ?) "
+-            "ORDER BY created_at, id LIMIT ?",
+-            (last_ts, last_id, limit),
+-        ).fetchall()
++    """MUTANT: naive OFFSET paging. cursor is treated as an integer offset. Plausible and common,
++    but unstable: an insert before the offset between two fetches shifts the window, dropping one
++    row and duplicating another. Same signature as the correct impl."""
++    offset = 0 if cursor is None else cursor
++    rows = conn.execute(
++        "SELECT id FROM items ORDER BY created_at LIMIT ? OFFSET ?",
++        (limit, offset),
++    ).fetchall()
+     ids = [r[0] for r in rows]
+-    next_cursor = (rows[-1][1], rows[-1][0]) if rows else None
++    next_cursor = None if not rows else offset + limit
+     return ids, next_cursor

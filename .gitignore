@@ -1,0 +1,12 @@
+# macOS / editor cruft (the deriver also skips dotfiles in slices/, but keep the tree clean)
+.DS_Store
+*.clearance-rendered-preview-*
+__pycache__/
+*.pyc
+*.orig
+*.bak
+
+# SDE runtime controls (operator-local; not committed)
+.sde/STOP
+.sde/STEER
+.sde/escalations.log

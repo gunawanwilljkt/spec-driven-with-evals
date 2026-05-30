@@ -1,0 +1,18 @@
+# DOCUMENTED mobile binding of the SAME journey-eval contract: flow-spec in → {verdict, artifacts}.
+#
+# NOT EXECUTED in this repo: no Maestro installed, no app built (see KNOWN-LIMITATIONS.md). The API
+# instance `session.py` is the executable analogue that actually runs and gates; this file shows how
+# the identical intent (I1/I2) binds to a mobile runner with zero change to the spec or the contract.
+# Run, when a device + app exist:  maestro test journey.maestro.yaml
+appId: com.example.feed
+---
+- launchApp
+- assertVisible: "Item 1"
+- scroll
+- scroll
+# Intent I1/I2: every item appears exactly once even if a new item arrives at the top mid-scroll.
+- assertVisible: "Item 6"
+- assertNotVisible:
+    # After a concurrent insert, a buggy OFFSET feed re-shows Item 3 (the duplicate the session.py
+    # eval catches as duplicated_ids:[3]). A trusted mobile journey asserts no such duplicate.
+    text: "Item 3 (duplicate)"

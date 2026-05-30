@@ -1,0 +1,11 @@
+# Append-only eval-trust events — one JSON object per line. Trust is DERIVED from the latest events.
+# Readers SKIP malformed lines (these comment lines included).
+#
+# kill event (RED-on-wrong evidence):
+#   {"ts":"<iso>","eval":"<id>","result":"killed","kind":"mutant|property|metamorphic|golden|manual","mutant":"<diff-path-or-prose>","others_stayed_green":true,"barrier":"eval-hidden","eval_hash":"<sha of eval file>","spec_fp":"<fingerprint of spec.md intents>","by":"<agent>"}
+# pass event (GREEN-on-right evidence):
+#   {"ts":"<iso>","eval":"<id>","result":"passed","runs":3,"of":3,"eval_hash":"<sha of eval file>","spec_fp":"<fingerprint of spec.md intents>","by":"<agent>"}
+#
+# trusted(E) ⇔ latest `killed` AND latest `passed` for E, BOTH at the CURRENT eval_hash + spec_fp.
+# Drift in the eval file (eval_hash) or in the intent statement (spec_fp) invalidates trust → state: stale.
+# eval_hash / spec_fp are exactly what `sde trust <slice>` computes, so events are machine-checkable.
