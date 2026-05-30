@@ -21,7 +21,9 @@ The framework is fully usable at Tier 0/1 today; the factory is the Tier-2 enhan
 - examples/01-pagination derives `done` (coverage 2/2, trust 2/2); `bash run.sh` PROOF HOLDS.
 - framework/bin/sde: 6/6 deriver tests pass (incl. drift, blocked, malformed-log, non-dir slices).
 - Live drift demo: extending test_sde.py invalidated I2.unit's trust (stale) until re-established.
+- Advisor pass #2 + TWO cold-agent resumability tests PASSED on this .sde/ layout (deriver forbidden,
+  then deriver+source forbidden); the RESUME.md rung-2 fingerprint gap was found and fixed. See reasoning/04.
 
 ## OPEN QUESTIONS / BLOCKERS
-- Tier-2 factory behavioral proof (an unattended run) is the main deferred item.
-- Final advisor pass pending; then git init + checkpoint commit.
+- Tier-2 factory behavioral proof (a bounded unattended run) is the main deferred item — see KNOWN-LIMITATIONS.
+- The framework is usable at Tier 0/1 today; the factory is the Tier-2 enhancement.
