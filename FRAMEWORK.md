@@ -5,7 +5,7 @@
 > State lives on disk so any fresh session resumes cleanly before context rot. The same discipline
 > scales from a solo developer to an autonomous software factory.
 >
-> `Version 0.1` · `2026-05-30` · Canonical reference — **read this first.**
+> `Version 0.2.0` (canonical: `framework/VERSION`) · `2026-05-30` · Canonical reference — **read this first.**
 > Design trail with advisor + peer reasoning: [`docs/reasoning/`](docs/reasoning/).
 
 The thesis, in one sentence: **code generation is solved enough; intent-conformance is not — so

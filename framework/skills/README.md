@@ -1,8 +1,9 @@
 # SDE skills (Claude Code plugin)
 
-Ten slash commands operate SDE — eight **Tier-1** verbs (thin orchestration layers over the on-disk
-state + the read-only deriver `framework/bin/sde`, sharing one ladder so they can't drift) plus the
-two **autonomous drivers** `/sde-factory` (Tier 2, `docs/reasoning/03-*`) and `/sde-auto`.
+Eleven slash commands operate SDE — eight **Tier-1** verbs (thin orchestration layers over the on-disk
+state + the read-only deriver `framework/bin/sde`, sharing one ladder so they can't drift), the two
+**autonomous drivers** `/sde-factory` (Tier 2, `docs/reasoning/03-*`) and `/sde-auto`, and the
+**maintenance** command `/sde-update`.
 
 ## Install
 Copy these `sde-*/` skill folders where Claude Code discovers skills (e.g. `~/.claude/skills/` or a
@@ -22,6 +23,7 @@ plugin directory). Put `framework/bin/sde` on `PATH`, or call `python3 framework
 | `/sde-status` | print derived state + next action (read-only) |
 | `/sde-factory` | **Tier 2** — external mechanical driver; a fresh `claude -p` per ladder rung (`bin/sde-factory.sh`) |
 | `/sde-auto` | **autonomous** — drive the ladder hands-off from scratch or `HANDOFF.md`; commits every rung; at ~20% context left asks *continue* (auto-compact) vs *pause+resume*; prints a one-line status |
+| `/sde-update` | **maintenance** — update the framework from its GitHub repo (version-checked; preserves your `.sde/` project state) |
 
 Typical flow: `/sde-init` → `/sde-spec` → `/sde-eval` → `/sde-next` (×N: freeze, execute…) →
 `/sde-verify`. Any step may run in a fresh session; `/sde-resume` continues. For unattended runs use
