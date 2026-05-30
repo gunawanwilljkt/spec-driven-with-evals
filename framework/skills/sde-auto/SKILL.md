@@ -55,17 +55,23 @@ the eval-blind worktree by construction.**
 - Derive, never trust a label. **Never weaken an eval to pass a gate** → STOP + escalate.
 - One rung = one commit. Eval code in `evals/`/`tests/`, referenced by project-root paths.
 
-## Completion check — never trust `sde next` exit-0 alone (the autonomy keystone)
-The deriver reports "objective complete" when all *scaffolded* slices are done — but it **cannot see
-slices that were never scaffolded.** With a roster of 01–06 and only 01–02 scaffolded, it FALSELY says
-complete. So when `sde next` reports "objective complete":
-1. Read `objective.md`'s **Slices** roster (the planned slice ids).
-2. For EACH roster id: does `.sde/slices/<id>/` exist AND derive `done`?
-3. If any is **missing** → `mkdir -p .sde/slices/<id>` and **CONTINUE** (its next action is `/sde-spec`).
-   If any is **not done** → CONTINUE. **Do not stop while any roster slice is unbuilt.**
-4. Only when EVERY roster slice is `done` → the objective's "Done when" is a **human** call:
+## Completion check — the roster is disk-derived, not prose-parsed (the autonomy keystone)
+A prior false-positive: with a roster of 01–06 but only 01–02 scaffolded, the deriver said "objective
+complete" because it cannot see slices that don't exist yet. **Fixed structurally** — `sde next` is now
+roster-aware (it routes to *scaffolding the first unbuilt roster slice* rather than declaring complete),
+and a dedicated primitive prints the scoreboard from disk — so you do **not** hand-parse `objective.md`:
+```bash
+sde roster        # one line per PLANNED slice + "roster: <done>/<total>"; exit 0 iff ALL done, else 2
+```
+The loop trusts the deriver, not a prose read:
+1. `sde roster` exit **2** → a roster slice is unscaffolded or not done → **CONTINUE**. `sde next`
+   already points at it (an unscaffolded slice's action is `mkdir -p .sde/slices/<id>` then `/sde-spec`).
+2. `sde roster` exit **0** (every roster slice `done`) → the objective's "Done when" is a **human** call:
    - Mode A → ask the human to verify `objective.md`'s "Done when".
-   - Mode B → append `.sde/escalations.log` ("roster complete — human verify Done-when") and EXIT.
+   - Mode B → append `.sde/escalations.log` ("roster N/N done — human verify Done-when") and EXIT.
+
+(The roster is parsed from `objective.md` bullets shaped `- NN-slug — …`; keep roster lines in that
+shape so `sde roster` sees them. A slice off the roster still builds — it just won't gate completion.)
 
 ## 2 · Context guard — Mode A ONLY
 > Mode B has **no** context guard: each `claude -p` does one rung and exits, so nothing rots, and

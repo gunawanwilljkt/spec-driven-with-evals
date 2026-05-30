@@ -147,6 +147,19 @@ class LadderTest(unittest.TestCase):
         sid, phase, _, _ = sde.next_action(self.root)
         self.assertEqual(sid, "01-x")
 
+    def test_roster_blocks_false_objective_complete(self):
+        # An objective roster names slices that may not be scaffolded yet. With NO scaffolded slices,
+        # the deriver must NOT say "objective complete" — it must route to scaffolding the first
+        # roster slice. (This is the false-positive a prior autonomous run actually hit.)
+        self._w("objective.md", "# Objective: T\nNorth star: x.\nDone when:\n- x\nSlices:\n"
+                                "- 01-alpha — first\n- 02-beta — second\n")
+        shutil.rmtree(self.sdir)                       # nothing scaffolded
+        self.assertEqual(sde.parse_roster(self.root), ["01-alpha", "02-beta"])
+        sid, phase, action, _ = sde.next_action(self.root)
+        self.assertEqual((sid, phase), ("01-alpha", "spec"))
+        self.assertIn("scaffold", action)
+        self.assertEqual(sde.cmd_roster(self.root), 2)  # both unscaffolded → not complete
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -1,4 +1,4 @@
-`SDE v0.2.1` — updated 2026-05-30 19:05 WIB (12:05 UTC) · 11 skills · deriver tests 6/6 · [github](https://github.com/gunawanwilljkt/spec-driven-with-evals)
+`SDE v0.2.2` — updated 2026-05-30 19:15 WIB (12:15 UTC) · 11 skills · deriver tests 7/7 · [github](https://github.com/gunawanwilljkt/spec-driven-with-evals)
 
 # SDE — Spec-Driven Development, Evals-First
 
@@ -106,12 +106,12 @@ spec-driven-with-evals/
 ├─ FRAMEWORK.md              # canonical reference        KNOWN-LIMITATIONS.md  # honest status
 ├─ docs/{reasoning,decisions}/   # the design trail (00 problem … 04 review) + ADRs
 ├─ framework/
-│  ├─ bin/sde                # read-only state deriver (the ladder) — TESTED (6/6)
+│  ├─ bin/sde                # read-only state deriver (status·next·trust·roster) — TESTED (7/7)
 │  ├─ bin/sde-factory.sh     # Tier-2 driver   ·   bin/sde-update.sh  # version-checked updater
 │  ├─ templates/.sde/        # on-disk state templates (Tier 0)
 │  ├─ tests/test_sde.py      # the deriver regression net
 │  ├─ skills/                # 11 Claude Code slash-command skills (the table above)
-│  ├─ VERSION                # 0.2.0   ·   REPO  # update source repo
+│  ├─ VERSION                # 0.2.2   ·   REPO  # update source repo
 ├─ examples/01-pagination/   # the worked example + runnable proof
 ├─ proof/                    # the raw verified proof
 └─ .sde/                     # the framework dogfooding ITSELF (its own objective/spec/tasks/handoff)

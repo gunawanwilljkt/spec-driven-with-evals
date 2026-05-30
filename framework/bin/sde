@@ -216,11 +216,32 @@ def slices(root):
     return sorted(d for d in os.listdir(sdir)
                   if not d.startswith(".") and os.path.isdir(os.path.join(sdir, d)))
 
+ROSTER_RE = re.compile(r"^\s*[-*]\s+`?([0-9]{2,}-[a-z0-9][a-z0-9-]*)`?\b")
+
+def parse_roster(root):
+    """The objective's PLANNED slice ids, from objective.md bullets like '- 01-slug — …'. Used so
+    'objective complete' is never reported while a roster slice is still unscaffolded (the deriver
+    cannot otherwise see a slice that does not exist yet)."""
+    text = _read(os.path.join(root, "objective.md")) or ""
+    out, seen = [], set()
+    for line in text.splitlines():
+        m = ROSTER_RE.match(line)
+        if m and m.group(1) not in seen:
+            seen.add(m.group(1)); out.append(m.group(1))
+    return out
+
 def next_action(root):
-    for sid in slices(root):
+    scaffolded = slices(root)
+    for sid in scaffolded:                       # any scaffolded slice not done → its action
         phase, action, detail = slice_phase(root, sid, os.path.join(root, "slices", sid))
-        if phase not in ("done",):
+        if phase != "done":
             return (sid, phase, action, detail)
+    # all scaffolded slices done — but the objective is NOT complete while a ROSTER slice is unbuilt
+    for sid in parse_roster(root):
+        if sid not in scaffolded:
+            return (sid, "spec",
+                    "scaffold roster slice %s: mkdir -p .sde/slices/%s, then author its spec" % (sid, sid),
+                    "unscaffolded")
     return (None, "done", "objective complete — verify .sde/objective.md 'done when'", "")
 
 # ---------- commands ----------
@@ -258,13 +279,28 @@ def cmd_trust(root, sid):
         print("%-18s %s" % (eid, st))
     return 0 if all(v == "trusted" for v in trust.values()) else 2
 
+def cmd_roster(root):
+    ids = parse_roster(root)
+    if not ids:
+        print("no roster found in objective.md (expected bullets like '- 01-slug — …')"); return 1
+    scaffolded = set(slices(root)); done = 0
+    for sid in ids:
+        if sid not in scaffolded:
+            print("  %-26s unscaffolded" % sid); continue
+        phase = slice_phase(root, sid, os.path.join(root, "slices", sid))[0]
+        print("  %-26s %s" % (sid, phase))
+        if phase == "done":
+            done += 1
+    print("roster: %d/%d done" % (done, len(ids)))
+    return 0 if done == len(ids) else 2
+
 def _first(text, pat):
     m = re.search(pat, text, re.MULTILINE)
     return m.group(1).strip() if m else None
 
 def main(argv):
     ap = argparse.ArgumentParser(prog="sde", add_help=True)
-    ap.add_argument("command", choices=["status", "next", "trust"])
+    ap.add_argument("command", choices=["status", "next", "trust", "roster"])
     ap.add_argument("slice", nargs="?")
     ap.add_argument("--root", default=".")
     ap.add_argument("--porcelain", action="store_true", help="tab-separated slice/phase/action (for `next`)")
@@ -278,6 +314,8 @@ def main(argv):
         if not a.slice:
             ap.error("trust requires a SLICE id")
         return cmd_trust(root, a.slice)
+    if a.command == "roster":
+        return cmd_roster(root)
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
