@@ -17,7 +17,7 @@ ROOT="$PWD"; FW="$ROOT/framework"
 REPO="${SDE_UPDATE_REPO:-$(cat "$FW/REPO" 2>/dev/null || echo 'gunawanwilljkt/spec-driven-with-evals@main')}"
 SLUG="${REPO%@*}"; BR="${REPO##*@}"; [ "$BR" = "$REPO" ] && BR=main
 
-cur="$(tr -d '[:space:]' < "$FW/VERSION" 2>/dev/null || echo 0.0.0)"
+cur="$(cat "$FW/VERSION" 2>/dev/null | tr -d '[:space:]')"; [ -n "$cur" ] || cur="0.0.0"
 latest="$(curl -fsSL "https://raw.githubusercontent.com/$SLUG/$BR/framework/VERSION" 2>/dev/null | tr -d '[:space:]')"
 [ -n "$latest" ] || { echo "error: could not read latest VERSION from $SLUG@$BR (offline? repo missing framework/VERSION?)" >&2; exit 1; }
 echo "current: ${cur:-0.0.0}    latest: $latest    source: $SLUG@$BR"
