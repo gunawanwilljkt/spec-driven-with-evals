@@ -77,10 +77,11 @@ shape so `sde roster` sees them. A slice off the roster still builds — it just
 > Mode B has **no** context guard: each `claude -p` does one rung and exits, so nothing rots, and
 > there is no human to ask — never call `AskUserQuestion` in a detached run.
 
-The model can't introspect its own context, but the bundled meter reads it off **this session's
-transcript** (the same token data the status line uses) and **auto-detects the window**:
+The model can't introspect its own context, but the meter **bundled in this skill's directory**
+(`ctx.py`, beside this SKILL.md — let `$SKILL` = this skill's Base directory) reads it off **this
+session's transcript** (the same token data the status line uses) and **auto-detects the window**:
 ```bash
-python3 framework/bin/ctx.py --json     # {"pct_left":88.6,"window":"1M","basis":"detected",...}
+python3 "$SKILL/ctx.py" --json          # → {"pct_left":88.6,"window":"1M","basis":"detected", ...}
 ```
 After each rung, read `pct_left`. **ASK when `pct_left <= 25`** — the user asked for "~20%"; the extra
 margin covers the meter's ~one-turn lag plus one more rung (a single rung can be a big jump). Erring
@@ -95,9 +96,9 @@ summarization system reminder**, regardless of the number.
   crosses 200k. To pin it manually: `CONTEXT_LIMIT=1000000` (or `200000`).
 - **Optional — exact window (no inference):** the model can't see its window, but Claude Code pipes the
   authoritative `context_window_size` to the *status line*. Tee it to a cache the meter reads. Install the
-  meter at a **stable** path — **NOT** inside `framework/` (which `/sde-update` `rm -rf`s; a status line
-  piping through a missing file goes blank): `cp framework/bin/ctx.py ~/.claude/ctx.py`, then set your
-  `statusLine` command to `python3 ~/.claude/ctx.py --cache | <your existing status-line cmd>`. It writes
+  meter at a **stable** path — **NOT** inside `framework/` or this skill dir (both `rm -rf`'d by
+  `/sde-update`; a status line piping through a missing file goes blank): `cp "$SKILL/ctx.py" ~/.claude/ctx.py`,
+  then set your `statusLine` command to `python3 ~/.claude/ctx.py --cache | <your existing status-line cmd>`. It writes
   `~/.claude/.ctx-<session>.json` and re-emits the JSON so your status line renders unchanged → basis
   `statusline`. (Match is by the `<session>.jsonl` basename, so the cache and meter agree across paths.)
 
@@ -105,7 +106,7 @@ On trigger, ASK (AskUserQuestion):
 > ⚠ Context ~`<pct_left>`% left (window `<window>·<basis>`) — state committed + handoff refreshed, safe to stop.
 > • **Continue** → I keep driving; Claude Code auto-compacts. • **Pause** → I stop; resume per §4.
 
-## STATUS — print after EVERY rung, one line (ctx from `python3 framework/bin/ctx.py`)
+## STATUS — print after EVERY rung, one line (ctx from the bundled `ctx.py`)
 ```
 SDE ⟦<slice> · <phase>⟧ trust <k/n> · roster <done>/<total> · ctx <pct_left>%·<window>·<basis> · step <i>/<cap> · @<sha> · next: <action>
 ```

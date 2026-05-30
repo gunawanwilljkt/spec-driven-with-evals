@@ -1,4 +1,4 @@
-`SDE v0.3.0` — updated 2026-05-30 19:41 WIB (12:41 UTC) · 11 skills · deriver 7/7 · ctx 7/7 · [github](https://github.com/gunawanwilljkt/spec-driven-with-evals)
+`SDE v0.3.1` — updated 2026-05-30 19:59 WIB (12:59 UTC) · 11 skills · deriver 7/7 · ctx 7/7 · [github](https://github.com/gunawanwilljkt/spec-driven-with-evals)
 
 # SDE — Spec-Driven Development, Evals-First
 
@@ -107,11 +107,10 @@ spec-driven-with-evals/
 ├─ docs/{reasoning,decisions}/   # the design trail (00 problem … 04 review) + ADRs
 ├─ framework/
 │  ├─ bin/sde                # read-only state deriver (status·next·trust·roster) — TESTED (7/7)
-│  ├─ bin/ctx.py             # context-window meter — auto-detect window + status-line bridge — TESTED (7/7)
 │  ├─ bin/sde-factory.sh     # Tier-2 driver   ·   bin/sde-update.sh  # version-checked updater
 │  ├─ templates/.sde/        # on-disk state templates (Tier 0)
 │  ├─ tests/{test_sde.py,test_ctx.py}   # the deriver + context-meter regression nets
-│  ├─ skills/                # 11 Claude Code slash-command skills (the table above)
+│  ├─ skills/                # 11 slash-command skills (table above); sde-auto bundles ctx.py — the context meter (7/7)
 │  ├─ VERSION                # 0.3.0   ·   REPO  # update source repo
 ├─ examples/01-pagination/   # the worked example + runnable proof
 ├─ proof/                    # the raw verified proof

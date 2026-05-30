@@ -8,7 +8,7 @@ larger (silent death). stdlib `unittest`; run: python3 -m unittest test_ctx
 import importlib.machinery, importlib.util, json, os, sys, tempfile, unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CTX_PATH = os.path.join(HERE, "..", "bin", "ctx.py")
+CTX_PATH = os.path.join(HERE, "..", "skills", "sde-auto", "ctx.py")   # bundled with the /sde-auto skill
 
 
 def _load():
