@@ -1,81 +1,90 @@
 ---
 name: sde-auto
-description: Drive the SDE ladder autonomously — from an empty project or resuming from HANDOFF.md — one COMMITTED step at a time, with context-rot safety. It checkpoints after every step so any stop is lossless; when context runs low it pauses and asks you to continue (auto-compact) or stop+resume cleanly; and it can run each step in a fresh process. Prints a one-line status. Use to run SDE hands-off.
+description: Drive the SDE ladder autonomously — from an empty project or resuming from HANDOFF.md — one COMMITTED step at a time, with context-rot safety. Two modes: interactive (you supervise; it pauses for your call near the context limit) and detached (a fresh process per rung, unattended). Checkpoints after every step so any stop is lossless. The eval-trust barrier is enforced structurally (an eval-blind worktree), and "objective complete" is checked against the full slice roster. Prints a one-line status.
 allowed-tools: Bash, Read, Write, Edit, Agent, AskUserQuestion
 ---
 
 # /sde-auto — autonomous SDE driver (context-rot-safe)
 
-`sde` = `python3 framework/bin/sde`. You are the autonomous driver: advance the ladder toward the
-objective, **one committed step at a time**, terse, never letting a full context window lose work.
-Operate in **first person, minimal prose** — emit the one-line STATUS, not essays.
+`sde` = `python3 framework/bin/sde`. Drive the ladder to the objective, one COMMITTED step at a time,
+terse. **First pick a mode** — they differ in *who paces the loop* and *whether anyone can answer*:
+
+## Modes — choose one up front
+- **A · Interactive (supervised, this session).** You loop the rungs; a human is present. Near the
+  context limit you ASK them (continue / pause). Use when you want to approve trust + the gate.
+- **B · Detached (unattended, a fresh process per rung).** Launch the external driver — it runs a fresh
+  `claude -p` per ladder rung, so **no process accumulates context** and there is **no human to ask**:
+  ```bash
+  bash framework/bin/sde-factory.sh --root . --max-steps 60 --branch sde/auto
+  ```
+  This is the real "trigger a new process per step." It enforces the eval-blind worktree, caps,
+  escalation, and a kill-switch by construction; it commits to a branch and never pushes/deploys.
+  **Use B for truly hands-off runs.** Watch `.sde/escalations.log` + `sde status`.
+
+The rest of this skill is **Mode A** (the in-session loop). Mode B is the driver above.
 
 ## 0 · Bootstrap — where to start
-- `HANDOFF.md` exists at the project root → read it, then `sde status`. Resume at the derived next action.
-- else `.sde/` exists → `sde status`. Resume.
-- else (empty project) → you need an objective. If the user supplied one, run `/sde-init "<objective>"`;
-  otherwise ask once (AskUserQuestion: "What's the objective?"), then `/sde-init`. Then continue.
+`HANDOFF.md` at root → read it, then `sde status`, resume. Else `.sde/` exists → `sde status`, resume.
+Else (empty) → get an objective (use the user's, or ask once), `/sde-init "<objective>"`, continue.
 
-## 1 · The drive loop — repeat until a STOP CONDITION
-Each iteration = exactly ONE ladder rung, then a durable checkpoint:
+## 1 · The drive loop (Mode A) — repeat until a STOP CONDITION
 1. `sde status` → the single NEXT ACTION + active slice/phase.
-2. Do that one rung, obeying the RULES below. Dispatch by phase (same mapping as `/sde-next`):
-   `spec`→`/sde-spec` · `bind`/`trust`→`/sde-eval` · `freeze`→`cp spec.md spec.lock.md` ·
-   `execute`→implement the next ready task · `evalrun`→`/sde-verify` · `blocked`→deliberate re-freeze.
-3. **Checkpoint — ALWAYS, even mid-slice:** `git add -A && git commit -m "sde-auto: <slice> <rung>"`;
-   refresh `.sde/handoff.md` (`/sde-handoff`); if a slice's status changed, update `HANDOFF.md`'s
-   "What is DONE" + "NEXT ACTION".
+2. Do that one rung. Dispatch by phase: `spec`→`/sde-spec` · **`bind`/`trust`→ "Trust rung" below
+   (NOT a bare `/sde-eval`)** · `freeze`→`cp spec.md spec.lock.md` · `execute`→implement the next ready
+   task · `evalrun`→`/sde-verify` · `blocked`→deliberate re-freeze.
+3. **Checkpoint — ALWAYS:** `git add -A && git commit`; `/sde-handoff`; update `HANDOFF.md` if a slice changed.
 4. Print the STATUS line.
-5. Run the CONTEXT GUARD (§2). Then loop.
+5. Context guard (§2).
 
-## RULES — non-negotiable (you are unsupervised; these keep you honest)
-- **Eval trust = GREEN-on-right ∧ RED-on-wrong.** Mutants authored **eval-blind** (a *separate*
-  subagent that sees intent + source, never the eval). No slice is `done` until its required evals are
-  trusted **and** pass at the frozen spec.
-- **Derive, never trust a label** — `sde status` is the source of truth; if you didn't run it, you
-  don't know the state. Eval code lives in `evals/`/`tests/`.
-- **Never weaken an eval to pass a gate.** If a gate won't pass after ~3 tries → STOP + escalate (write
-  `.sde/escalations.log`, tell the user).
-- **`sde status` exit 0** ("objective complete — verify done-when") → STOP and ask the human; never
-  self-declare the objective done.
-- One rung = one commit. The repo is the memory; the chat is a cache.
-
-## 2 · Context guard — the "~20% left" decision
-You **cannot** measure your own context precisely. Use these signals, in order; because §1.3 already
-committed, erring EARLY is free:
-- the harness reports context usage ≤ ~20% remaining → trigger;
-- you receive an auto-summarization / compaction system reminder → context just filled → trigger;
-- backstop heuristic: after every **5** rungs, or after any very large operation → trigger proactively.
-
-On trigger, STOP the loop and ask (AskUserQuestion), having already committed + refreshed the handoff:
-> ⚠ Context ~20% left — state committed + handoff refreshed, safe to stop.
-> • **Continue** → I keep driving; Claude Code auto-compacts the context.
-> • **Pause & resume** → I stop now; resume losslessly (see RESUME). Nothing is lost.
-Continue → keep looping. Pause → print RESUME (§4) and STOP.
-
-## 3 · Hands-off mode — a fresh process per step (no context to rot)
-To sidestep the 20% problem entirely, run each rung in a **new process**. Launch the external driver,
-which spawns a fresh `claude -p` per ladder rung (nothing accumulates context across steps):
+## Trust rung — the eval-blind barrier MUST be structural
+You authored the eval, so you already *know* it — a "spawn a subagent that won't look at the eval" rule
+is a discipline you can leak, not a guarantee (especially at low effort). Enforce it with a **git
+worktree the mutant author physically cannot see the eval in:**
 ```bash
-bash framework/bin/sde-factory.sh --root . --max-steps 40   # add --branch sde/auto
+git worktree add -q /tmp/sde-mutant HEAD
+rm -rf /tmp/sde-mutant/evals /tmp/sde-mutant/tests          # the mutant author sees source + intent, NOT the evals
 ```
-Watch `.sde/escalations.log` + `sde status`. The driver commits to a branch, **never pushes/deploys**,
-and escalates (never self-declares) at the objective boundary. Use this for truly unattended runs;
-use the in-session loop (§1) when you want to approve the continue/pause calls yourself.
+Spawn the mutant-author subagent scoped to `/tmp/sde-mutant` (intent + source only); take its diff;
+apply it to the MAIN tree; run the bound eval (expect RED) + the others (expect green); revert;
+`git worktree remove -f /tmp/sde-mutant`. Only then record trust. **If you cannot run the worktree
+path, do NOT claim trust autonomously — hand the trust rung to Mode B (`sde-factory.sh`), which builds
+the eval-blind worktree by construction.**
 
-## STATUS — print after EVERY rung, exactly one line
+## RULES (unsupervised — these keep you honest)
+- Eval trust = GREEN-on-right ∧ RED-on-wrong, mutant authored in the **eval-blind worktree** (above).
+- Derive, never trust a label. **Never weaken an eval to pass a gate** → STOP + escalate.
+- One rung = one commit. Eval code in `evals/`/`tests/`, referenced by project-root paths.
+
+## Completion check — never trust `sde next` exit-0 alone (the autonomy keystone)
+The deriver reports "objective complete" when all *scaffolded* slices are done — but it **cannot see
+slices that were never scaffolded.** With a roster of 01–06 and only 01–02 scaffolded, it FALSELY says
+complete. So when `sde next` reports "objective complete":
+1. Read `objective.md`'s **Slices** roster (the planned slice ids).
+2. For EACH roster id: does `.sde/slices/<id>/` exist AND derive `done`?
+3. If any is **missing** → `mkdir -p .sde/slices/<id>` and **CONTINUE** (its next action is `/sde-spec`).
+   If any is **not done** → CONTINUE. **Do not stop while any roster slice is unbuilt.**
+4. Only when EVERY roster slice is `done` → the objective's "Done when" is a **human** call:
+   - Mode A → ask the human to verify `objective.md`'s "Done when".
+   - Mode B → append `.sde/escalations.log` ("roster complete — human verify Done-when") and EXIT.
+
+## 2 · Context guard — Mode A ONLY
+> Mode B has **no** context guard: each `claude -p` does one rung and exits, so nothing rots, and
+> there is no human to ask — never call `AskUserQuestion` in a detached run.
+
+You cannot measure context precisely. Trigger on: a compaction/summarization system reminder, or a
+backstop of **every ~5 rungs** / any very large op. Because step 3 already committed + refreshed the
+handoff, erring early is free. On trigger, ASK (AskUserQuestion):
+> ⚠ Context ~20% left — state committed + handoff refreshed, safe to stop.
+> • **Continue** → I keep driving; Claude Code auto-compacts. • **Pause** → I stop; resume per §4.
+
+## STATUS — print after EVERY rung, one line
 ```
-SDE ⟦<slice> · <phase>⟧ trust <k/n> · step <i>/<cap> · ctx <ok|low> · @<short-sha> · next: <action>
+SDE ⟦<slice> · <phase>⟧ trust <k/n> · step <i>/<cap> · roster <done>/<total> · @<sha> · next: <action>
 ```
-e.g. `SDE ⟦03-group-chat · spec⟧ trust 0/0 · step 7/40 · ctx ok · @c847e17 · next: author intents`
 
-## 4 · RESUME — print this whenever you pause or stop
-Resuming is lossless; the repo is the memory.
-1. open a fresh session in this directory:  `cd <project-dir> && claude`
-2. (optional) different model/effort:        `/model` · `/effort`
-3. run **`/sde-auto`**  (or say: "Read HANDOFF.md and continue")
-→ it runs `sde status`, reads `HANDOFF.md`, and picks up at the exact next action.
+## §4 · RESUME — print on any pause/stop (resuming is lossless; the repo is the memory)
+1. `cd <project> && claude`  ·  2. (optional) `/model` `/effort`  ·  3. `/sde-auto` (or "Read HANDOFF.md and continue").
 
-## STOP CONDITIONS (always end on a committed boundary + a STATUS line + RESUME)
-objective done-when met (→ ask human) · gate unpassable after retries (→ escalate) · user chose Pause ·
-`--max-steps` cap reached.
+## STOP CONDITIONS (always end on a committed boundary + STATUS + RESUME)
+every roster slice `done` (→ §completion-check human verify) · gate unpassable after retries (→ escalate)
+· Mode-A user chose Pause · `--max-steps`/`--cap` reached.

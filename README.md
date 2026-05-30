@@ -1,4 +1,4 @@
-`SDE v0.2.0` — updated 2026-05-30 18:51 WIB (11:51 UTC) · 11 skills · deriver tests 6/6 · [github](https://github.com/gunawanwilljkt/spec-driven-with-evals)
+`SDE v0.2.1` — updated 2026-05-30 19:05 WIB (12:05 UTC) · 11 skills · deriver tests 6/6 · [github](https://github.com/gunawanwilljkt/spec-driven-with-evals)
 
 # SDE — Spec-Driven Development, Evals-First
 

@@ -54,7 +54,8 @@ fi
 echo "verifying the updated framework ..."
 ok=1
 python3 "$FW/tests/test_sde.py" >/dev/null 2>&1 && echo "  deriver tests: OK" || { echo "  deriver tests: FAILED"; ok=0; }
-python3 "$FW/bin/sde" status --root "$ROOT" >/dev/null 2>&1 && echo "  project state still derives: OK" || { echo "  project derive: CHECK MANUALLY"; ok=0; }
+python3 "$FW/bin/sde" status --root "$ROOT" >/dev/null 2>&1; drc=$?   # 0=complete, 2=work remains: both fine; 1=structural error
+if [ "$drc" = 0 ] || [ "$drc" = 2 ]; then echo "  project state still derives: OK"; else echo "  project derive: CHECK MANUALLY (rc=$drc)"; ok=0; fi
 echo "updated ${cur:-0.0.0} -> $latest. Project state in .sde/ preserved."
 [ "$ok" = 1 ] || { echo "WARNING: post-update checks failed — review, or roll back with: git checkout -- framework FRAMEWORK.md .claude .sde/RESUME.md" >&2; exit 1; }
 echo "DONE."
