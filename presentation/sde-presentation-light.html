@@ -1,0 +1,519 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SDE — Spec-Driven, Evals-First (light)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;600;700;750;800;850&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>:root{--bg:#eceff4;--bg2:#e3e8f0;--panel:#ffffff;--panel2:#f6f8fb;--ink:#1b2433;--muted:#5c6675;--line:#e3e8f0;--accent:#4d68ff;--accent2:#11a597;--pass:#0f9a64;--fail:#df4f64;--warn:#9c7414;--codebg:#f3f6fa;--codeink:#283243;--brand:#7b8696;--chiptext:#ffffff;--shadow:0 10px 30px rgba(20,30,50,.10);--glow:0 0 0 1px rgba(77,104,255,.08);}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-snap-type:y mandatory;scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;font-feature-settings:'cv02','cv03','ss01'}
+.deck{display:flex;flex-direction:column;align-items:center}
+.slide{position:relative;width:1280px;height:720px;flex:0 0 auto;
+  background:radial-gradient(1200px 600px at 78% -8%, var(--panel2), var(--bg) 60%);
+  scroll-snap-align:center;overflow:hidden;border-bottom:1px solid var(--bg2)}
+.slide-in{position:absolute;inset:0;padding:58px 74px 54px;display:flex;flex-direction:column}
+.eyebrow{font-size:13px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);
+  display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:22px;height:2px;background:var(--accent);display:inline-block;border-radius:2px}
+.s-title{font-size:38px;line-height:1.12;font-weight:800;letter-spacing:-.02em;margin-top:12px;max-width:1010px}
+.s-title .hl{color:var(--accent)}
+.s-body{flex:1;margin-top:26px;min-height:0;display:flex;flex-direction:column;justify-content:flex-start}
+.s-foot{position:absolute;left:74px;right:74px;bottom:24px;display:flex;justify-content:space-between;
+  align-items:center;font-size:12px;color:var(--brand);letter-spacing:.02em}
+.s-foot .pg{font-variant-numeric:tabular-nums;font-weight:600}
+.lead{font-size:22px;line-height:1.5;color:var(--ink);max-width:980px;font-weight:450}
+.lead .mut,.mut{color:var(--muted)}.accent{color:var(--accent)}.ok{color:var(--pass)}.bad{color:var(--fail)}.warn{color:var(--warn)}
+.sub{font-size:17px;line-height:1.5;color:var(--muted);max-width:980px}
+b,strong{font-weight:700}
+.grid{display:grid;gap:16px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}.g4{grid-template-columns:1fr 1fr 1fr 1fr}
+.g12{grid-template-columns:1.05fr .95fr}.g21{grid-template-columns:1.3fr 1fr}.g31{grid-template-columns:1.55fr 1fr}
+.stack{display:flex;flex-direction:column;gap:13px}.row{display:flex;gap:12px;align-items:center}.wrap{flex-wrap:wrap}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:20px;box-shadow:var(--shadow)}
+.card .k{font-size:12px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--accent2)}
+.card h3{font-size:19px;font-weight:750;margin:8px 0 6px;letter-spacing:-.01em}
+.card p{font-size:15.5px;line-height:1.5;color:var(--muted)}
+.card.tight{padding:16px 17px}.card.tight h3{font-size:17px;margin:6px 0 4px}.card.tight p{font-size:14.5px}
+.num{width:28px;height:28px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);
+  color:var(--accent);font-weight:800;font-size:14px;display:grid;place-items:center;flex:0 0 auto}
+.code{background:var(--codebg);border:1px solid var(--line);border-radius:13px;padding:15px 17px;
+  font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:14px;line-height:1.6;color:var(--codeink);white-space:pre;overflow:hidden;tab-size:2}
+.code.sm{font-size:13px;line-height:1.55}
+.k-{color:var(--accent);font-weight:600}.m-{color:var(--fail);font-weight:600}.o-{color:var(--pass);font-weight:600}
+.c-{color:var(--muted)}.s-{color:var(--accent2);font-weight:600}
+.codecap{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.45}
+.filetag{font-size:11.5px;color:var(--brand);font-family:'JetBrains Mono',monospace;margin-bottom:7px;display:block;letter-spacing:.02em}
+.truth{display:grid;grid-template-columns:auto 1fr 1fr;gap:9px;align-items:center;max-width:540px}
+.truth.wide{max-width:600px}
+.truth .h{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);text-align:center}
+.truth .rl{font-size:15px;font-weight:650;color:var(--ink)}
+.truth .cell{display:grid;place-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;height:46px}
+.chip{font-size:13px;font-weight:800;letter-spacing:.04em;padding:5px 12px;border-radius:999px}
+.chip.pass{background:var(--pass);color:var(--chiptext)}.chip.fail{background:var(--fail);color:var(--chiptext)}
+.chip.gho{background:transparent;border:1.5px solid var(--line);color:var(--muted)}
+.badge{font-size:11.5px;font-weight:750;letter-spacing:.03em;padding:5px 11px;border-radius:999px;
+  border:1px solid var(--line);background:var(--panel2);color:var(--muted);white-space:nowrap}
+.badge.be{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
+.badge.mob{color:var(--accent2);border-color:color-mix(in srgb,var(--accent2) 35%,var(--line))}
+.badge.adm{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,var(--line))}
+.badge.live{color:var(--pass);border-color:color-mix(in srgb,var(--pass) 40%,var(--line))}
+.badge.illus{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,var(--line))}
+.badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.head-row{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.ladder{display:flex;flex-direction:column;gap:6px}
+.rung{display:grid;grid-template-columns:26px 104px 1fr;gap:13px;align-items:center;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 13px}
+.rung .ph{font-weight:750;font-size:14.5px}.rung .gd{font-size:13.5px;color:var(--muted)}
+.rung.on{border-color:var(--accent);box-shadow:var(--glow)}.rung.done .ph{color:var(--pass)}
+.cmd{font-family:'JetBrains Mono',monospace;font-size:13.5px;background:var(--panel);border:1px solid var(--line);
+  border-radius:7px;padding:3px 9px;color:var(--accent);white-space:nowrap}
+.flow{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.flow .arr{color:var(--muted);font-size:15px}
+.pill{display:inline-flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);
+  border-radius:999px;padding:7px 14px;font-size:14px;font-weight:600}
+.pill.ac{border-color:color-mix(in srgb,var(--accent) 40%,var(--line));color:var(--accent)}
+.dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.note{font-size:13px;color:var(--muted);line-height:1.45}
+.note.illus{border-left:3px solid var(--warn);background:color-mix(in srgb,var(--warn) 8%,transparent);
+  border-radius:0 8px 8px 0;padding:9px 13px}
+.kpi{font-size:32px;font-weight:850;letter-spacing:-.02em;line-height:1}.kpi.ok{color:var(--pass)}.kpi.ac{color:var(--accent)}
+.kpi-l{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.35}
+ul.bul{list-style:none;display:flex;flex-direction:column;gap:11px}
+ul.bul li{position:relative;padding-left:25px;font-size:17.5px;line-height:1.42;color:var(--ink)}
+ul.bul li::before{content:"";position:absolute;left:0;top:8px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+ul.bul.sm li{font-size:15.5px}ul.bul.sm li::before{top:7px}
+.cover .kick{font-size:14px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.cover h1{font-size:74px;line-height:1.02;font-weight:850;letter-spacing:-.035em;margin:18px 0 0}
+.cover h1 .e{color:var(--accent)}
+.cover .tag{font-size:23px;color:var(--muted);margin-top:20px;max-width:880px;line-height:1.45}
+.cover .meta{margin-top:auto;display:flex;gap:10px;flex-wrap:wrap}
+.sec .big{font-size:120px;font-weight:850;letter-spacing:-.04em;color:var(--accent);line-height:.9;opacity:.92}
+.sec h2{font-size:44px;font-weight:820;letter-spacing:-.02em;margin-top:6px}
+.sec .badges{justify-content:flex-start;margin-top:18px}
+.sec p{font-size:18px;color:var(--muted);margin-top:14px;max-width:780px;line-height:1.5}
+.statement{display:flex;flex-direction:column;justify-content:center;height:100%}
+.statement .q{font-size:40px;line-height:1.26;font-weight:800;letter-spacing:-.02em;max-width:1050px}
+.statement .q .hl{color:var(--accent)}
+.statement .by{font-size:18px;color:var(--muted);margin-top:22px}
+.tier h3{font-size:18px}.bar{height:7px;border-radius:6px;background:var(--panel2);overflow:hidden;border:1px solid var(--line);margin-top:10px}
+.bar>i{display:block;height:100%;border-radius:6px;background:var(--accent)}
+.surf{display:grid;grid-template-columns:90px 1fr;gap:12px;align-items:center}
+</style></head>
+<body><div class="deck"><section class="slide" data-i="1"><div class="slide-in cover">
+          <div class="kick">Spec-Driven Development · Evals-First</div>
+          <h1>SDE<span class="e">.</span></h1>
+          <div class="tag">Build full-stack &amp; mobile software where <b>evals confirm the code follows
+            the intent</b> — not just that it runs. With autonomous handoff and a path to a self-running
+            software factory.</div>
+          <div class="meta"><span class="badge">How it works</span><span class="badge be">Example 1 · SaaS</span>
+            <span class="badge mob">Example 2 · Payment gateway</span></div>
+        </div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">01 / 35</span></footer></section>
+<section class="slide" data-i="2"><div class="slide-in"><div class="statement"><div class="q">AI now writes working code in seconds. The open question is no longer <span class="hl">“does it run?”</span> — it’s <span class="hl">“did it build what we meant?”</span></div>
+          <div class="by">— SDE moves the unit of trust from a passing test to a trustworthy eval.</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">02 / 35</span></footer></section>
+<section class="slide" data-i="3"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">The trap</div><h2 class="s-title">“Tests pass” is not “intent satisfied”</h2></div></div><div class="s-body">
+<div class="grid g21" style="gap:30px">
+  <div class="stack">
+    <div class="lead">A unit test checks an <b>example</b>. It can stay green while the code quietly
+      betrays the <b>intent</b> — because it never exercised the case that matters.</div>
+    <ul class="bul">
+      <li>Pagination that <span class="bad">duplicates a row</span> under a concurrent insert</li>
+      <li>A query that <span class="bad">leaks another tenant’s data</span></li>
+      <li>A charge endpoint that <span class="bad">bills twice</span> on a retry</li>
+    </ul>
+  </div>
+  <div class="stack">
+    <div class="truth"><div class="h"></div><div class="h">correct impl</div><div class="h">the mutant</div><div class="rl">unit test</div><div class="cell"><span class="chip pass">PASS</span></div><div class="cell"><span class="chip pass">PASS</span></div><div class="rl">the eval</div><div class="cell"><span class="chip pass">PASS</span></div><div class="cell"><span class="chip fail">FAIL</span></div></div>
+    <div class="note">The mutant is a <b>plausible wrong implementation</b>. The unit test can’t tell
+      it apart from the right one. A <b>validity-aware eval</b> can.</div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">03 / 35</span></footer></section>
+<section class="slide" data-i="4"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">The framework in three ideas</div><h2 class="s-title">Three pillars</h2></div></div><div class="s-body">
+<div class="grid g3">
+  <div class="card "><div class="k">Pillar 1</div><h3>Eval validity is the product</h3><p>An eval is trusted only when it is GREEN-on-right ∧ RED-on-wrong — it passes on the intended code and is proven to FAIL on a plausible mutant.</p></div>
+  <div class="card "><div class="k">Pillar 2</div><h3>Progressive rigor</h3><p>One framework, three tiers: Tier 0 convention → Tier 1 gated skills → Tier 2 autonomous factory. You never install machinery you don’t need yet.</p></div>
+  <div class="card "><div class="k">Pillar 3</div><h3>Proof by dogfooding</h3><p>It is built using itself. The proof is runnable; resumability is demonstrated by a cold agent recovering state from disk alone.</p></div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">04 / 35</span></footer></section>
+<section class="slide" data-i="5"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">How it works</div><h2 class="s-title">The lifecycle: objective → eval-confirmed code</h2></div></div><div class="s-body">
+<div class="stack" style="gap:22px">
+  <div class="row"><span class="pill ac">OBJECTIVE</span><span class="flow arr">→</span>
+    <span class="mut" style="font-size:16px">decomposed into thin vertical <b>slices</b>, each run through:</span></div>
+  <div class="flow">
+    <span class="pill">spec</span><span class="arr">→</span><span class="pill">bind evals</span><span class="arr">→</span>
+    <span class="pill ac">trust</span><span class="arr">→</span><span class="pill">freeze</span><span class="arr">→</span>
+    <span class="pill">execute</span><span class="arr">→</span><span class="pill">eval-run</span><span class="arr">→</span>
+    <span class="pill" style="border-color:var(--pass);color:var(--pass)">done</span>
+  </div>
+  <div class="note">Every step is a <b>pure function of disk state</b> — a <span class="cmd" style="padding:1px 7px">grep</span>/<span class="cmd" style="padding:1px 7px">diff</span>/<span class="cmd" style="padding:1px 7px">cat</span>, not a value held in the chat. The chat is a cache; the repo is the memory. A fresh session computes the same “what’s next?”.</div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">05 / 35</span></footer></section>
+<section class="slide" data-i="6"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">How it works · the spec</div><h2 class="s-title">A spec is numbered intent statements</h2></div></div><div class="s-body">
+<div class="grid g12" style="gap:28px">
+  <div class="code"><span class="filetag">.sde/slices/01-pagination/spec.md</span><span class="c-"># what we MEAN — not how. each intent binds ≥1 eval.</span>
+I1. Every item in a paging session is returned
+    <span class="o-">exactly once</span> — no omission, no duplicate.
+    eval: journey  evals/session.py  gate=<span class="k-">required</span>
+          mutant=evals/mutant.diff
+I2. Paging is stable under a concurrent insert
+    (keyset, not OFFSET).
+    eval: journey  evals/session.py  gate=required
+    eval: ux       evals/rubric.md   gate=flag</div>
+  <div class="stack">
+    <div class="card "><div class="k">Why prose + bindings</div><h3>Intent, then evidence</h3><p>Each intent is a single checkable statement. Each binds an eval that must catch a violation of it. Coverage is derived: every intent → ≥1 eval, or the slice can’t advance.</p></div>
+    <div class="note">Gates: <b class="ok">required</b> blocks · <b class="warn">flag</b> surfaces · advisory always allows.</div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">06 / 35</span></footer></section>
+<section class="slide" data-i="7"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">The centerpiece</div><h2 class="s-title">An eval earns trust: <span class="hl">GREEN-on-right ∧ RED-on-wrong</span></h2></div></div><div class="s-body">
+<div class="grid g12" style="gap:28px">
+  <div class="stack">
+    <div class="code"><span class="filetag">evals/session.py  +  evals/mutant.diff</span><span class="c-"># the eval (validity-aware)</span>
+page 1 → <span class="s-">concurrent insert</span> → page rest
+assert every item appears <span class="o-">exactly once</span>
+
+<span class="c-"># the mutant (authored eval-blind)</span>
+- <span class="o-">keyset cursor on (created_at, id)</span>
++ <span class="m-">ORDER BY created_at LIMIT / OFFSET</span></div>
+    <div class="codecap">A vacuous eval (<span class="bad">assert True</span>) is green-on-right — but green-on-wrong too. So it is <b>rejected</b>.</div>
+  </div>
+  <div class="stack">
+    <div class="truth"><div class="h"></div><div class="h">correct impl</div><div class="h">the mutant</div><div class="rl">unit test</div><div class="cell"><span class="chip pass">PASS</span></div><div class="cell"><span class="chip pass">PASS</span></div><div class="rl">the eval</div><div class="cell"><span class="chip pass">PASS</span></div><div class="cell"><span class="chip fail">FAIL</span></div></div>
+    <div class="card "><div class="k">Kill record</div><h3>RED-on-mutant is the proof</h3><p>The mutant the eval catches IS its evidence of specificity. Recorded in trust.log; invalidated when the eval or intent changes (drift → re-verify).</p></div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">07 / 35</span></footer></section>
+<section class="slide" data-i="8"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Anti-collusion</div><h2 class="s-title">The information barrier</h2></div></div><div class="s-body">
+<div class="grid g2" style="gap:22px">
+  <div class="card" style="border-color:color-mix(in srgb,var(--pass) 30%,var(--line))">
+    <div class="k" style="color:var(--pass)">The mutant author SEES</div>
+    <ul class="bul sm" style="margin-top:12px">
+      <li>The <b>intent</b> (plain prose)</li>
+      <li>The <b>code under test</b></li>
+    </ul>
+    <p class="mut" style="margin-top:12px;font-size:14.5px">…and must write a plausible diff that violates the intent.</p>
+  </div>
+  <div class="card" style="border-color:color-mix(in srgb,var(--fail) 30%,var(--line))">
+    <div class="k" style="color:var(--fail)">The mutant author NEVER sees</div>
+    <ul class="bul sm" style="margin-top:12px">
+      <li>The <b>eval</b> it must beat</li>
+    </ul>
+    <p class="mut" style="margin-top:12px;font-size:14.5px">Blind to the assertion, it can’t craft a <b>strawman</b> tuned to be caught. In Tier 2 this is an <b>eval-blind git worktree</b>.</p>
+  </div>
+</div>
+<div class="note" style="margin-top:18px">Gold standard: a <b>surgical</b> mutant that breaks one intent facet while every <b>other</b> eval stays green — proof the eval is load-bearing and non-redundant.</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">08 / 35</span></footer></section>
+<section class="slide" data-i="9"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Coverage validity</div><h2 class="s-title">The bounded intent-audit</h2></div></div><div class="s-body">
+<div class="grid g21" style="gap:28px">
+  <div class="stack">
+    <div class="lead">An independent auditor sees <b>only the intent + the eval set</b> — never the code — and must <b>exhibit a betrayer</b>: an implementation that passes every eval yet violates a named facet.</div>
+    <div class="note">It answers the question trust alone can’t: <i>is anything intended but un-evaluated?</i></div>
+  </div>
+  <div class="stack">
+    <div class="row"><span class="dot" style="background:var(--fail)"></span><b>Betrayer found</b> <span class="mut">→ required new eval</span></div>
+    <div class="row"><span class="dot" style="background:var(--pass)"></span><b>2 clean rounds</b> <span class="mut">→ satisfied</span></div>
+    <div class="row"><span class="dot" style="background:var(--warn)"></span><b>3-round cap</b> <span class="mut">→ escalate, never spin</span></div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">09 / 35</span></footer></section>
+<section class="slide" data-i="10"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">State model</div><h2 class="s-title">Every fact is <span class="hl">PRIMITIVE</span> or <span class="hl">DERIVED</span></h2></div></div><div class="s-body">
+<div class="grid g2" style="gap:22px">
+  <div class="card "><div class="k">Primitive — authored once</div><h3>Written, never recomputed</h3><p>objective · spec · spec.lock · tasks · trust.log · runs.log · decisions. Append-only where it counts, so a torn write is the worst damage.</p></div>
+  <div class="card "><div class="k">Derived — pure f(disk)</div><h3>Computed at read time, never stored</h3><p>phase · coverage · eval-trust · the next action · the handoff dossier. Nothing to corrupt, nothing to go stale, no dual source of truth.</p></div>
+</div>
+<div class="note" style="margin-top:18px">This is what makes “the next action is a pure function of disk” <b>literally true</b> — and why a fresh agent always agrees with the last one.</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">10 / 35</span></footer></section>
+<section class="slide" data-i="11"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">The state machine</div><h2 class="s-title">The ladder — resume is derivation</h2></div></div><div class="s-body">
+<div class="grid g21" style="gap:26px;align-items:center">
+  <div class="ladder">
+    <div class="rung done"><span class="num">0</span><span class="ph">spec</span><span class="gd">≥1 intent line</span></div>
+    <div class="rung done"><span class="num">1</span><span class="ph">bind</span><span class="gd">every intent has an eval</span></div>
+    <div class="rung on"><span class="num">2</span><span class="ph">trust</span><span class="gd">killed ∧ passed @ current hash</span></div>
+    <div class="rung"><span class="num">3</span><span class="ph">freeze</span><span class="gd">spec.lock == spec (diff)</span></div>
+    <div class="rung"><span class="num">4</span><span class="ph">execute</span><span class="gd">ready tasks done</span></div>
+    <div class="rung"><span class="num">5</span><span class="ph">eval-run</span><span class="gd">required verdicts PASS</span></div>
+    <div class="rung"><span class="num">6</span><span class="ph">done</span><span class="gd">no drift</span></div>
+  </div>
+  <div class="stack">
+    <div class="lead" style="font-size:19px">The <b>first failing rung</b> is the phase; its action is the next action.</div>
+    <div class="note">The resume protocol and the deterministic deriver walk the <b>same</b> ladder — so they can never diverge.</div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">11 / 35</span></footer></section>
+<section class="slide" data-i="12"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Context-rot defense</div><h2 class="s-title">Hand off before rot — proven, not promised</h2></div></div><div class="s-body">
+<div class="grid g3" style="gap:18px">
+  <div class="card tight"><div class="kpi ac">2</div><div class="kpi-l">cold agents recovered objective + next action + eval status from <b>disk alone</b></div></div>
+  <div class="card tight"><div class="kpi ok">0</div><div class="kpi-l">chat history needed — the repo is the memory, the session is a cache</div></div>
+  <div class="card tight"><div class="kpi">rung&nbsp;2</div><div class="kpi-l">trust evaluated <b>by hand</b> from RESUME.md; matched the deriver exactly</div></div>
+</div>
+<div class="note" style="margin-top:18px">No token-fraction guesswork. Every step ends at a <b>committed, clean boundary</b>, so handing off “too early” costs only one cheap re-derivation. A stale handoff is detected by its git fingerprint and ignored.</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">12 / 35</span></footer></section>
+<section class="slide" data-i="13"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Adoptability</div><h2 class="s-title">One framework, three tiers</h2></div></div><div class="s-body">
+<div class="grid g3">
+  <div class="card tier"><div class="k">Tier 0</div><h3>Discipline</h3><p>Plain files; your own runner. The filesystem layout <b>is</b> the state machine. Minutes to adopt, no runtime.</p><div class="bar"><i style="width:34%"></i></div></div>
+  <div class="card tier"><div class="k">Tier 1</div><h3>Gated</h3><p>Eval-trust + coverage + the ladder, enforced by 8 slash-command skills and a tested read-only deriver.</p><div class="bar"><i style="width:67%"></i></div></div>
+  <div class="card tier"><div class="k">Tier 2</div><h3>Factory</h3><p>Bounded autonomous loop — fresh context per rung, caps, escalation, kill-switch. The software factory.</p><div class="bar"><i style="width:100%"></i></div></div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">13 / 35</span></footer></section>
+<section class="slide" data-i="14"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Roles</div><h2 class="s-title">Operator’s-eye view: who does what</h2></div></div><div class="s-body">
+<div class="grid g2" style="gap:22px">
+  <div class="card"><div class="k" style="color:var(--accent)">The human decides</div>
+    <ul class="bul sm" style="margin-top:12px">
+      <li>The <b>objective</b> and how to slice it</li>
+      <li>Ambiguous intent (auth, money, ordering)</li>
+      <li>“Done when” — the factory escalates, never self-declares</li>
+      <li>When to arm the kill-switch / steer</li>
+    </ul></div>
+  <div class="card"><div class="k" style="color:var(--accent2)">The agent / factory does</div>
+    <ul class="bul sm" style="margin-top:12px">
+      <li>Draft specs, write evals, author eval-blind mutants</li>
+      <li>Implement slices; run the suite; write verdicts</li>
+      <li>Derive the next action; hand off cleanly</li>
+      <li>Stop at every committed boundary</li>
+    </ul></div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">14 / 35</span></footer></section>
+<section class="slide" data-i="15"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Using it · the verbs</div><h2 class="s-title">Eight slash commands, one ladder</h2></div></div><div class="s-body">
+<div class="grid g4" style="gap:13px">
+  <div class="card tight"><div class="k">/sde-init</div><h3>scaffold</h3><p>Create .sde/, capture the objective.</p></div>
+  <div class="card tight"><div class="k">/sde-spec</div><h3>intents</h3><p>Author the slice’s intent statements.</p></div>
+  <div class="card tight"><div class="k">/sde-eval</div><h3>trust ★</h3><p>Bind evals + the eval-blind mutant barrier.</p></div>
+  <div class="card tight"><div class="k">/sde-next</div><h3>drive</h3><p>Do the one derived action, then checkpoint.</p></div>
+  <div class="card tight"><div class="k">/sde-verify</div><h3>gate</h3><p>Run the suite + the intent-audit.</p></div>
+  <div class="card tight"><div class="k">/sde-handoff</div><h3>freeze</h3><p>Stamp the dossier for a clean resume.</p></div>
+  <div class="card tight"><div class="k">/sde-resume</div><h3>cold start</h3><p>Recover state from disk, continue.</p></div>
+  <div class="card tight"><div class="k">/sde-status</div><h3>read</h3><p>Derived phase, coverage, trust, next.</p></div>
+</div>
+<div class="note" style="margin-top:16px">Each is a thin layer over the on-disk state + the deriver, so they can’t drift from each other. <span class="cmd" style="padding:1px 7px">/sde-factory</span> wraps <span class="cmd" style="padding:1px 7px">/sde-next</span> for Tier 2.</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">15 / 35</span></footer></section>
+<section class="slide" data-i="16"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Using it · quick start</div><h2 class="s-title">From zero to a gated slice</h2></div></div><div class="s-body">
+<div class="grid g2" style="gap:22px">
+  <div class="code"><span class="filetag">Tier 0 · pure convention</span><span class="c-"># Tier 0 — no install</span>
+cp -r framework/templates/.sde ./.sde
+<span class="c-"># edit objective.md + slices/01-*/spec.md</span>
+<span class="c-"># write evals + a mutant diff per intent</span>
+<span class="c-"># run them with YOUR runner; follow RESUME.md</span></div>
+  <div class="code"><span class="filetag">Tier 1 · gated</span><span class="c-"># Tier 1 — Claude Code skills</span>
+<span class="k-">/sde-init</span> "page the list, every item once"
+<span class="k-">/sde-spec</span>  →  <span class="k-">/sde-eval</span>  →  <span class="k-">/sde-next</span>
+<span class="k-">/sde-verify</span>
+<span class="k-">/sde-resume</span>      <span class="c-"># after any context reset</span></div>
+</div>
+<div class="note" style="margin-top:16px">Any step may run in a fresh session. <span class="cmd" style="padding:1px 7px">/sde-resume</span> continues from the derived next action.</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">16 / 35</span></footer></section>
+<section class="slide" data-i="17"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Using it · on disk</div><h2 class="s-title">The repository is the memory</h2></div></div><div class="s-body">
+<div class="grid g21" style="gap:28px">
+  <div class="code"><span class="filetag">project/.sde</span>.sde/
+├─ objective.md        <span class="c-"># north star + “done when”</span>
+├─ decisions.md        <span class="c-"># append-only ADRs</span>
+├─ RESUME.md           <span class="c-"># the ladder (run by hand or sde)</span>
+├─ runs.log            <span class="c-"># append-only verdicts</span>
+└─ slices/01-…/
+   ├─ spec.md  spec.lock.md
+   ├─ tasks.md  trust.log
+   └─ evals/</div>
+  <div class="stack">
+    <div class="card "><div class="k">Greppable, catable</div><h3>No black box</h3><p>Read the whole state with cat. The deriver only reads it; it stores nothing.</p></div>
+    <div class="note">App code lives in your normal tree (<span class="cmd" style="padding:1px 7px">src/</span>, <span class="cmd" style="padding:1px 7px">evals/</span>). <b>.sde/</b> holds state, not code.</div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">17 / 35</span></footer></section>
+<section class="slide" data-i="18"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Tier 2 · the factory</div><h2 class="s-title">A mechanical loop, fresh context per rung</h2></div></div><div class="s-body">
+<div class="grid g12" style="gap:26px">
+  <div class="code"><span class="filetag">framework/bin/sde-factory.sh</span><span class="k-">while</span> sde next; <span class="k-">do</span>
+  rc=$?                       <span class="c-"># 0 done · 2 work · 1 error</span>
+  [ $rc = 0 ] &amp;&amp; <span class="m-">escalate</span> done-when   <span class="c-"># never auto-succeed</span>
+  before=$(git rev-parse HEAD)
+  <span class="k-">claude -p</span> "do ONLY the next action; commit; stop"
+  [ HEAD = before ] &amp;&amp; <span class="m-">escalate</span> no-progress
+<span class="k-">done</span></div>
+  <div class="stack">
+    <div class="card "><div class="k">Executor in the harness</div><h3>Agents propose; the driver decides</h3><p>Only the driver runs evals/mutants and writes the logs — a builder can’t grade its own work.</p></div>
+    <div class="card "><div class="k">No session rots</div><h3>One rung = one fresh claude -p</h3><p>Nothing lives long enough to decay; the loop is the durable part, not the session.</p></div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">18 / 35</span></footer></section>
+<section class="slide" data-i="19"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Tier 2 · safety</div><h2 class="s-title">Bounded autonomy — designed to halt</h2></div></div><div class="s-body">
+<div class="grid g3" style="gap:16px">
+  <div class="card tight"><div class="k">Hard stops</div><h3>Caps everywhere</h3><p>HEAD-based no-progress retry cap + a single MAX_STEPS budget + a .sde/STOP kill-switch + a steer file.</p></div>
+  <div class="card tight"><div class="k">Never weaken a gate</div><h3>Escalate, don’t cheat</h3><p>A gate that won’t pass after N tries blocks + escalates. The loop never lowers a bar to get green.</p></div>
+  <div class="card tight"><div class="k">Structural guards</div><h3>Cheating can’t pay</h3><p>Weakening an eval re-opens its trust; forged verdicts can’t (driver writes them); a vacuous eval can never reach done.</p></div>
+</div>
+<div class="note" style="margin-top:18px">The driver <b>commits to a branch and never pushes or deploys</b>. Humans own “done.”</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">19 / 35</span></footer></section>
+<section class="slide" data-i="20"><div class="slide-in sec" style="justify-content:center">
+          <div class="big">01</div><h2>Example 1 — Multi-tenant SaaS</h2><div class="badges"><span class="badge be">Web + API</span><span class="badge illus">Illustrative walkthrough</span></div><p>A team project tracker. The intent that ordinary tests miss: a user must never see another organization’s data.</p></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">20 / 35</span></footer></section>
+<section class="slide" data-i="21"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Example 1 · scope</div><h2 class="s-title">One objective, four slices</h2></div><div class="badges"><span class="badge illus">Illustrative</span></div></div><div class="s-body">
+<div class="grid g21" style="gap:28px">
+  <div class="card "><div class="k">Objective</div><h3>Ship a multi-tenant tracker</h3><p>Organizations sign up, invite teammates, and manage projects — each org’s data fully isolated from every other.</p></div>
+  <div class="stack">
+    <div class="row"><span class="num">01</span><b>Auth &amp; org membership</b></div>
+    <div class="row"><span class="num">02</span><b>Projects list</b> <span class="mut">— tenant isolation ★</span></div>
+    <div class="row"><span class="num">03</span><b>Invite teammates</b> <span class="mut">— roles</span></div>
+    <div class="row"><span class="num">04</span><b>Billing</b> <span class="mut">— subscription</span></div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">21 / 35</span></footer></section>
+<section class="slide" data-i="22"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Example 1 · slice 02 · spec</div><h2 class="s-title">The intent the tests forget</h2></div><div class="badges"><span class="badge be">Web + API</span><span class="badge illus">Illustrative</span></div></div><div class="s-body">
+<div class="grid g12" style="gap:28px">
+  <div class="code"><span class="filetag">.sde/slices/02-projects/spec.md</span>I1. A user only ever sees projects that
+    belong to <span class="o-">their own organization</span>.
+    eval: contract  evals/isolation.py
+          gate=<span class="k-">required</span>  mutant=evals/leak.diff
+
+I2. Members see all org projects; the org
+    boundary is never crossed by a filter,
+    a search, or a direct id lookup.</div>
+  <div class="stack">
+    <div class="card "><div class="k">Why it’s dangerous</div><h3>Silent, not loud</h3><p>A tenant leak doesn’t crash. It returns data — the wrong org’s. Nothing in a single-tenant test suite notices.</p></div>
+    <div class="note">The intent is a <b>negative</b> (“never sees…”). Negatives are exactly what example-based tests under-cover.</div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">22 / 35</span></footer></section>
+<section class="slide" data-i="23"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Example 1 · slice 02 · eval</div><h2 class="s-title">The eval seeds two tenants</h2></div><div class="badges"><span class="badge illus">Illustrative</span></div></div><div class="s-body">
+<div class="grid g12" style="gap:28px">
+  <div class="stack">
+    <div class="code"><span class="filetag">src/projects.sql  +  evals/isolation.py</span><span class="c-"># the mutant: forgets the tenant filter</span>
+- WHERE owner_id=? <span class="o-">AND org_id=?</span>
++ WHERE owner_id=?            <span class="m-"># leaks</span>
+
+<span class="c-"># the eval: seed org A + org B</span>
+login as a member of <span class="s-">org A</span>
+GET /projects → assert <span class="o-">0 rows</span> from org B</div>
+    <div class="codecap">The unit test seeds <b>one</b> org, so both impls return the same rows — green.</div>
+  </div>
+  <div class="stack">
+    <div class="truth"><div class="h"></div><div class="h">with filter</div><div class="h">without</div><div class="rl">unit test · 1 org</div><div class="cell"><span class="chip pass">PASS</span></div><div class="cell"><span class="chip pass">PASS</span></div><div class="rl">isolation eval · 2 orgs</div><div class="cell"><span class="chip pass">PASS</span></div><div class="cell"><span class="chip fail">FAIL</span></div></div>
+    <div class="note illus"><b>Illustrative.</b> The mutant (a dropped <span class="cmd" style="padding:1px 7px">AND org_id=?</span>) is the textbook multi-tenant leak.</div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">23 / 35</span></footer></section>
+<section class="slide" data-i="24"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Example 1 · slice 02 · drive</div><h2 class="s-title">Trust → freeze → execute</h2></div><div class="badges"><span class="badge illus">Illustrative</span></div></div><div class="s-body">
+<div class="grid g2" style="gap:22px">
+  <div class="ladder">
+    <div class="rung done"><span class="num">✓</span><span class="ph">bind</span><span class="gd">isolation.py bound to I1</span></div>
+    <div class="rung done"><span class="num">✓</span><span class="ph">trust</span><span class="gd">leak.diff killed it · barrier on</span></div>
+    <div class="rung done"><span class="num">✓</span><span class="ph">freeze</span><span class="gd">spec locked</span></div>
+    <div class="rung on"><span class="num">→</span><span class="ph">execute</span><span class="gd">implement the scoped query</span></div>
+  </div>
+  <div class="stack">
+    <div class="card "><div class="k">Order matters</div><h3>Eval before code</h3><p>The eval is trusted — and red — before the query is written. The first job of the executor is to turn it green the right way.</p></div>
+    <div class="note">Each rung ends in a commit. If context fills here, a fresh <span class="cmd" style="padding:1px 7px">/sde-resume</span> picks up at <b>execute</b>.</div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">24 / 35</span></footer></section>
+<section class="slide" data-i="25"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Example 1 · outcome</div><h2 class="s-title">The leak is caught before it ships</h2></div><div class="badges"><span class="badge illus">Illustrative</span></div></div><div class="s-body">
+<div class="grid g21" style="gap:26px;align-items:center">
+  <div class="stack">
+    <div class="lead">Implementation lands. <span class="cmd" style="padding:1px 7px">/sde-verify</span> runs the suite: the isolation eval goes <b class="ok">green</b>; the intent-audit finds no betrayer. Slice 02 derives <b>done</b>.</div>
+    <div class="note">A regression that drops the filter later → eval red → the gate blocks the merge. The intent is now permanently guarded.</div>
+  </div>
+  <div class="card tight"><div class="k">What the eval bought</div>
+    <p style="margin-top:8px;font-size:15px">A <b>negative intent</b> (“never another org’s data”) turned into an executable, regression-proof guard — the one the unit suite structurally couldn’t express.</p></div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">25 / 35</span></footer></section>
+<section class="slide" data-i="26"><div class="slide-in sec" style="justify-content:center">
+          <div class="big">02</div><h2>Example 2 — Payment gateway</h2><div class="badges"><span class="badge be">Backend</span><span class="badge mob">Merchant mobile app</span><span class="badge adm">Admin dashboard</span><span class="badge illus">Illustrative walkthrough</span></div><p>One objective spanning three surfaces. Each surface has an intent that is cheap to get wrong and expensive to ship wrong.</p></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">26 / 35</span></footer></section>
+<section class="slide" data-i="27"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Example 2 · scope</div><h2 class="s-title">Three surfaces, one objective</h2></div><div class="badges"><span class="badge illus">Illustrative</span></div></div><div class="s-body">
+<div class="stack" style="gap:14px">
+  <div class="surf"><span class="badge be">Backend</span><div><b>Idempotent charges</b> · money rounding · webhooks <span class="mut">— the ledger of record</span></div></div>
+  <div class="surf"><span class="badge mob">Mobile</span><div><b>Merchant checkout</b> · never show “Paid” before the gateway confirms <span class="mut">— Maestro journey</span></div></div>
+  <div class="surf"><span class="badge adm">Admin</span><div><b>Payouts &amp; reconciliation</b> · only finance-role may move money <span class="mut">— RBAC</span></div></div>
+  <div class="note" style="margin-top:6px">Slices are <b>vertical</b>: each spans the surface end-to-end and carries its own trusted evals. The factory runs them with disjoint write sets.</div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">27 / 35</span></footer></section>
+<section class="slide" data-i="28"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Example 2 · backend · intent</div><h2 class="s-title">The same payment, submitted twice</h2></div><div class="badges"><span class="badge be">Backend</span><span class="badge illus">Illustrative</span></div></div><div class="s-body">
+<div class="grid g21" style="gap:28px">
+  <div class="card "><div class="k">Intent I1</div><h3>Charge exactly once</h3><p>A retry, a flaky network, a double-tap — submitting the same payment twice must bill the customer once, and return the same charge.</p></div>
+  <div class="stack">
+    <div class="lead" style="font-size:19px">This is the single most expensive bug class in payments — and the easiest to pass a happy-path test.</div>
+    <div class="note">The contract is the <b>idempotency key</b>: same key in, same charge out, no second row.</div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">28 / 35</span></footer></section>
+<section class="slide" data-i="29"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Example 2 · backend · eval</div><h2 class="s-title">The eval replays the key</h2></div><div class="badges"><span class="badge be">Backend</span><span class="badge illus">Illustrative</span></div></div><div class="s-body">
+<div class="grid g12" style="gap:28px">
+  <div class="stack">
+    <div class="code"><span class="filetag">src/charges.py</span>POST /charges   Idempotency-Key: <span class="s-">abc</span>
+
+<span class="c-"># mutant — ignores the key</span>
+charge = create(amount)        <span class="m-"># → 2 rows</span>
+<span class="c-"># right — atomic upsert on the key</span>
+charge = <span class="o-">get_or_create(key, amount)</span></div>
+    <div class="codecap">The unit test sends <b>one</b> request. The intent is about the <b>second</b>.</div>
+  </div>
+  <div class="stack">
+    <div class="truth"><div class="h"></div><div class="h">correct impl</div><div class="h">the mutant</div><div class="rl">unit · 1 request</div><div class="cell"><span class="chip pass">PASS</span></div><div class="cell"><span class="chip pass">PASS</span></div><div class="rl">eval · 2× same key</div><div class="cell"><span class="chip pass">PASS</span></div><div class="cell"><span class="chip fail">FAIL</span></div></div>
+    <div class="card "><div class="k">What the eval asserts</div><h3>One charge, same id</h3><p>Two requests, identical key → exactly one row, and the same charge id returned both times.</p></div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">29 / 35</span></footer></section>
+<section class="slide" data-i="30"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Example 2 · mobile · journey</div><h2 class="s-title">Never show “Paid” before the gateway confirms</h2></div><div class="badges"><span class="badge mob">Mobile</span><span class="badge illus">Illustrative</span></div></div><div class="s-body">
+<div class="grid g12" style="gap:28px">
+  <div class="stack">
+    <div class="code"><span class="filetag">evals/checkout.maestro.yaml</span>appId: com.paybridge.merchant
+- launchApp
+- tapOn: "Charge $20"
+<span class="c-"># mutant: optimistic UI marks Paid on tap</span>
+- assertVisible: <span class="o-">"Declined"</span>   <span class="c-"># test card</span>
+- assertNotVisible: <span class="m-">"Paid"</span></div>
+    <div class="note illus"><b>Documented contract, not a device run.</b> The runner-agnostic journey (<i>flow → {verdict, artifacts}</i>) has an executable API-level analogue.</div>
+  </div>
+  <div class="stack">
+    <div class="truth"><div class="h"></div><div class="h">confirm-first</div><div class="h">optimistic</div><div class="rl">unit · render receipt</div><div class="cell"><span class="chip pass">PASS</span></div><div class="cell"><span class="chip pass">PASS</span></div><div class="rl">journey · decline</div><div class="cell"><span class="chip pass">PASS</span></div><div class="cell"><span class="chip fail">FAIL</span></div></div>
+    <div class="card "><div class="k">The intent</div><h3>Truth over optimism</h3><p>A declined card must read “Declined.” Showing “Paid” before settlement is the violation the journey eval pins.</p></div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">30 / 35</span></footer></section>
+<section class="slide" data-i="31"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Example 2 · admin · RBAC</div><h2 class="s-title">Only finance-role can move money</h2></div><div class="badges"><span class="badge adm">Admin</span><span class="badge illus">Illustrative</span></div></div><div class="s-body">
+<div class="grid g12" style="gap:28px">
+  <div class="stack">
+    <div class="code"><span class="filetag">src/payouts.py  +  evals/authz.py</span><span class="c-"># mutant: missing the role check</span>
+POST /payouts → create_payout()  <span class="m-"># any admin</span>
+<span class="c-"># right: guard the endpoint</span>
+<span class="o-">require_role("finance")</span>
+
+<span class="c-"># the eval: an authz matrix</span>
+as <span class="s-">ops</span>     → expect <span class="o-">403</span>
+as <span class="s-">finance</span> → expect <span class="o-">200</span></div>
+  </div>
+  <div class="stack">
+    <div class="truth"><div class="h"></div><div class="h">correct impl</div><div class="h">the mutant</div><div class="rl">unit · finance pays</div><div class="cell"><span class="chip pass">PASS</span></div><div class="cell"><span class="chip pass">PASS</span></div><div class="rl">authz · ops blocked</div><div class="cell"><span class="chip pass">PASS</span></div><div class="cell"><span class="chip fail">FAIL</span></div></div>
+    <div class="note illus"><b>Illustrative.</b> A missing role check passes every “happy path” test — finance can still pay out. Only the <b>negative</b> case (ops must be blocked) catches it.</div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">31 / 35</span></footer></section>
+<section class="slide" data-i="32"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Example 2 · the factory</div><h2 class="s-title">One loop drives all three surfaces</h2></div><div class="badges"><span class="badge illus">Illustrative</span></div></div><div class="s-body">
+<div class="grid g21" style="gap:26px">
+  <div class="stack">
+    <div class="flow">
+      <span class="pill"><span class="dot" style="background:var(--accent)"></span>backend</span><span class="arr">·</span>
+      <span class="pill"><span class="dot" style="background:var(--accent2)"></span>mobile</span><span class="arr">·</span>
+      <span class="pill"><span class="dot" style="background:var(--warn)"></span>admin</span>
+    </div>
+    <div class="note">Disjoint slice directories → the factory advances them with no write contention. Each rung is a fresh, information-scoped <span class="cmd" style="padding:1px 7px">claude -p</span>; mutants are authored in an eval-blind worktree; a different-model judge grades the “clear error message” semantic eval at rungs 2 and 5.</div>
+  </div>
+  <div class="card tight"><div class="k">When a gate won’t pass</div>
+    <p style="margin-top:8px;font-size:15px">The slice is <b>blocked + escalated</b> to the human queue — the loop moves to an independent slice or stops. It never weakens the idempotency eval to go green.</p></div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">32 / 35</span></footer></section>
+<section class="slide" data-i="33"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Example 2 · recap</div><h2 class="s-title">Three surfaces, three intent violations caught</h2></div><div class="badges"><span class="badge illus">Illustrative</span></div></div><div class="s-body">
+<div class="grid g3">
+  <div class="card tight"><div class="k">Backend</div><h3>Double charge</h3><p>An idempotency-blind handler billed twice on a retry — green on the 1-request test, red on the replay eval.</p></div>
+  <div class="card tight"><div class="k">Mobile</div><h3>Optimistic “Paid”</h3><p>The app showed success before settlement — green on the receipt test, red on the decline journey.</p></div>
+  <div class="card tight"><div class="k">Admin</div><h3>Missing authz</h3><p>A payout endpoint any admin could call — green on the finance happy-path, red on the ops-blocked matrix.</p></div>
+</div>
+<div class="note" style="margin-top:18px">Each is a <b>negative or second-order</b> intent — the exact shape ordinary tests under-cover, and exactly what a trusted eval pins.</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">33 / 35</span></footer></section>
+<section class="slide" data-i="34"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Honesty</div><h2 class="s-title">What is proven vs. designed</h2></div></div><div class="s-body">
+<div class="grid g2" style="gap:22px">
+  <div class="card" style="border-color:color-mix(in srgb,var(--pass) 28%,var(--line))">
+    <div class="k" style="color:var(--pass)">Proven · runs in the repo</div>
+    <ul class="bul sm" style="margin-top:12px">
+      <li>Eval-trust on real code (pagination): mutant green on tests, red on eval</li>
+      <li>The deriver is tested (6/6); resumability shown by two cold agents</li>
+      <li>The framework dogfoods itself — state resumes from disk</li>
+    </ul></div>
+  <div class="card" style="border-color:color-mix(in srgb,var(--warn) 28%,var(--line))">
+    <div class="k" style="color:var(--warn)">Designed · not yet run here</div>
+    <ul class="bul sm" style="margin-top:12px">
+      <li>The Tier-2 factory’s unattended run (driver written, not executed)</li>
+      <li>A real mobile device journey; a live different-model judge</li>
+      <li><b>The two examples are illustrative</b> walkthroughs of the method</li>
+    </ul></div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">34 / 35</span></footer></section>
+<section class="slide" data-i="35"><div class="slide-in"><div class="head-row"><div><div class="eyebrow">Where to start</div><h2 class="s-title">Read it, run the proof, slice your objective</h2></div></div><div class="s-body">
+<div class="grid g21" style="gap:28px">
+  <div class="stack">
+    <div class="code"><span class="filetag">start here</span><span class="c-"># see an eval catch an intent violation</span>
+bash examples/01-pagination/run.sh
+
+<span class="c-"># watch the framework derive its own state</span>
+python3 framework/bin/sde status --root .</div>
+    <div class="row wrap" style="gap:8px"><span class="badge">FRAMEWORK.md</span><span class="badge">examples/01-pagination</span><span class="badge">docs/reasoning/00–04</span></div>
+  </div>
+  <div class="stack" style="justify-content:center">
+    <div class="lead" style="font-size:21px">Code generation was never the hard part. <b>Knowing it built what you meant</b> is — and the eval is what knows.</div>
+  </div>
+</div></div></div><footer class="s-foot"><span class="brand">SDE · Spec-Driven, Evals-First</span><span class="pg">35 / 35</span></footer></section></div>
+<script>
+const S=[...document.querySelectorAll('.slide')];let i=0;
+function go(n){i=Math.max(0,Math.min(S.length-1,n));S[i].scrollIntoView({behavior:'smooth'})}
+addEventListener('keydown',e=>{if(['ArrowRight','ArrowDown',' ','PageDown'].includes(e.key)){e.preventDefault();go(i+1)}
+if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();go(i-1)}
+if(e.key==='Home')go(0);if(e.key==='End')go(S.length-1)});
+const io=new IntersectionObserver(es=>es.forEach(x=>{if(x.isIntersecting)i=S.indexOf(x.target)}),{threshold:.6});
+S.forEach(s=>io.observe(s));
+</script></body></html>
