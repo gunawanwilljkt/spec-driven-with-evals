@@ -1,4 +1,4 @@
-derived_from: pending-initial-commit
+derived_from: 5659056edd7578e9620f66145dcfbadc5c85baf3
 # ^ /sde-handoff stamps this with `git rev-parse HEAD`. A resuming agent ignores this dossier if the
 #   fingerprint != current HEAD and re-derives from RESUME.md. (Hint only; disk is authoritative.)
 
