@@ -10,3 +10,8 @@ __pycache__/
 .sde/STOP
 .sde/STEER
 .sde/escalations.log
+
+# Claude Code operator-local / runtime (not committed)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/.ctx-*.json
