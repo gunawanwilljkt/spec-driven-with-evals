@@ -1,5 +1,5 @@
 # Append-only eval-trust events. Trust DERIVED from latest events at current eval_hash+spec_fp.
-{"ts": "2026-05-30T10:50:00Z", "eval": "I1.journey", "result": "killed", "kind": "mutant", "mutant": "evals/mutant.diff", "others_stayed_green": true, "barrier": "eval-hidden", "eval_hash": "sha256:a8bb25ff236e", "spec_fp": "sha256:63f7ec1f3a04", "by": "example"}
+{"ts": "2026-05-30T10:50:00Z", "eval": "I1.journey", "result": "killed", "kind": "mutant", "mutant": "evals/mutant.diff", "others_stayed_green": true, "barrier": "not-applied", "eval_hash": "sha256:a8bb25ff236e", "spec_fp": "sha256:63f7ec1f3a04", "by": "example"}
 {"ts": "2026-05-30T10:50:00Z", "eval": "I1.journey", "result": "passed", "runs": 3, "of": 3, "eval_hash": "sha256:a8bb25ff236e", "spec_fp": "sha256:63f7ec1f3a04", "by": "example"}
-{"ts": "2026-05-30T10:50:00Z", "eval": "I2.journey", "result": "killed", "kind": "mutant", "mutant": "evals/mutant.diff", "others_stayed_green": true, "barrier": "eval-hidden", "eval_hash": "sha256:a8bb25ff236e", "spec_fp": "sha256:63f7ec1f3a04", "by": "example"}
+{"ts": "2026-05-30T10:50:00Z", "eval": "I2.journey", "result": "killed", "kind": "mutant", "mutant": "evals/mutant.diff", "others_stayed_green": true, "barrier": "not-applied", "eval_hash": "sha256:a8bb25ff236e", "spec_fp": "sha256:63f7ec1f3a04", "by": "example"}
 {"ts": "2026-05-30T10:50:00Z", "eval": "I2.journey", "result": "passed", "runs": 3, "of": 3, "eval_hash": "sha256:a8bb25ff236e", "spec_fp": "sha256:63f7ec1f3a04", "by": "example"}

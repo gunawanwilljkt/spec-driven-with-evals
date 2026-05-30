@@ -166,7 +166,7 @@ semantic/ML intent), **golden/differential** (a labeled corpus or trusted refere
 `slices/<id>/trust.log` — append-only, one JSON event per line; trust state is **derived** from the
 latest events (never hand-set). See [`framework/templates/trust.log.example`](framework/templates/).
 A slice's rung-2 (`trust`) guard passes only when every required eval has both a `mutant:killed` and
-a `real:passed` event at the *current* `eval_hash` + `spec_lock` fingerprint.
+a `real:passed` event at the *current* `eval_hash` + `spec_fp` fingerprint.
 
 ---
 

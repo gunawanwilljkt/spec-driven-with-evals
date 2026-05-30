@@ -72,7 +72,9 @@ python3 framework/bin/sde status --root .                          # the framewo
 2. **Progressive rigor — one framework, three tiers.** Tier 0 convention → Tier 1 gated skills →
    Tier 2 autonomous factory. You never install machinery you don't need yet.
 3. **Proof by dogfooding.** It's built using itself; the proof is runnable; resumability is
-   demonstrated (a cold `claude -p` recovered objective + next action + eval status from disk alone).
+   demonstrated on the **shipping `.sde/` layout** — a cold agent, *forbidden from the deriver*,
+   followed `RESUME.md` by hand and recovered the correct objective + next action + eval status,
+   matching `sde next` (see `docs/reasoning/04`).
 
 ## How it relates to the prior `../sdd/`
 That framework is genuinely strong; this one keeps its best ideas (state-on-disk, fresh-context

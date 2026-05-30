@@ -15,7 +15,7 @@ honestly, with the commands to check each claim. Read this before relying on SDE
 | The state machine is derived (not stored) and correct | a tested read-only deriver computes phase/coverage/trust/next-action from disk | `python3 framework/tests/test_sde.py` (6/6) |
 | The framework dogfoods itself; state is resumable from disk (SC-3) | `.sde/` tracks this build; status derives the next action with zero chat history | `python3 framework/bin/sde status --root .` |
 | Drift invalidation works | extending `test_sde.py` flipped I2.unit's trust to `stale` until re-established (logged in `.sde/decisions.md`) | edit any trusted eval, re-run `sde trust` |
-| Cold-start resumability (SC-3, stronger) | in Round 1, a real `claude -p` given only the proof repo recovered objective + eval status + next action | `proof/resume.py` (deterministic gate); see `docs/reasoning/02` |
+| Cold-start resumability on the SHIPPING layout (SC-3) | a fresh agent, *forbidden from the `sde` deriver*, followed `.sde/RESUME.md` by hand and independently recovered the correct objective + next action (`02-factory-mode/bind`) + per-slice status — matching the deriver — and correctly ignored a stale handoff. It flagged that rung-2's `spec_fp` was under-specified for hand-following; **now fixed inline** in RESUME.md. | re-spawn a cold agent on the repo; see `docs/reasoning/04` |
 
 ## Designed, but NOT behaviorally proven here
 - **Tier-2 autonomous factory.** The design is complete and locked (`docs/reasoning/03`, decisions
@@ -40,6 +40,11 @@ honestly, with the commands to check each claim. Read this before relying on SDE
 - **LLM-as-judge / semantic evals are NOT wired to a real model** (no `ANTHROPIC_API_KEY` in this
   sandbox). Shown via the judge **contract** (`examples/01-pagination/judge_sample_verdict.json`,
   labeled "model NOT called"). The gate-blocking evals are deterministic and don't depend on the judge.
+- **The hand-built example & dogfood mutants were authored with the eval in view** — their
+  `trust.log` records `barrier: not-applied`. They genuinely prove the eval catches a real
+  intent-violation (GREEN-on-right ∧ RED-on-wrong), but they do **not** exercise the eval-blind
+  *information barrier* (D-3); that barrier is enforced by the Tier-2 driver's eval-blind worktree,
+  which hasn't been run here.
 - **The bounded intent-audit** is a specified protocol run via a subagent; no automated runner ships.
 - **N-of-N trust runs** (default 3) are documented; the deterministic example records the count but the
   helper ran each eval once. For flaky/nondeterministic evals you must actually run N times.
